@@ -59,7 +59,8 @@ class AQPStudio:
             if len(palette) != 16:
                 raise ValueError("Palette must have 16 colors")
             self.loaded_palette = palette
-            # Removed confirmation dialog
+            # After loading palette, set Force palette on image checkbox
+            self.force_palette_var.set(True)
             self.update_preview()
         except Exception as e:
             messagebox.showerror("Error", f"Failed to load palette: {e}")
@@ -170,7 +171,6 @@ class AQPStudio:
         btn_frame.pack(pady=(4, 8))
         tk.Button(btn_frame, text="Load Palette...", command=self.load_palette).pack(side=tk.LEFT, padx=5)
         tk.Button(btn_frame, text="Save Palette...", command=self.save_palette).pack(side=tk.LEFT, padx=5)
-        tk.Checkbutton(palette_frame, text="Use Median Cut (16 colors)", variable=self.palette_var, command=self.update_preview).pack(anchor="w", pady=(0, 4))
         tk.Checkbutton(palette_frame, text="Force palette on image", variable=self.force_palette_var, command=self.update_preview).pack(anchor="w")
 
         # Palette Preview: reduce width to save space
