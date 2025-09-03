@@ -1,7 +1,0 @@
-Failed to load image: 'AquariusImageApp' object has no attribute 'set_image_controls_state'
-
-Traceback (most recent call last):
-  File "C:\Users\sph\Box\Retro\Aquarius\Aquarius+\Development\AQP Studio\aqp_studio.py", line 60, in import_image
-    self.set_image_controls_state("normal")
-    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-AttributeError: 'AquariusImageApp' object has no attribute 'set_image_controls_state'. Did you mean: 'image_controls_frame'?
