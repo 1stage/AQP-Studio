@@ -207,8 +207,12 @@ class AQPStudio:
                         pass
 
     def import_image(self):
-        file_path = filedialog.askopenfilename(filetypes=[("Image Files", "*.png;*.jpg;*.jpeg;*.bmp")])
+        file_path = filedialog.askopenfilename(filetypes=[("Image Files", "*.png;*.jpg;*.jpeg;*.bmp;*.bmp4;*.bm4")])
         if not file_path:
+            return
+        ext = os.path.splitext(file_path)[1].lower()
+        if ext in [".bmp4", ".bm4"]:
+            self.import_bmp4(file_path)
             return
         try:
             self.image = Image.open(file_path)
@@ -221,7 +225,54 @@ class AQPStudio:
             tb = traceback.format_exc()
             with open("error_log.txt", "w") as f:
                 f.write(f"Failed to load image: {e}\n\n{tb}")
-            messagebox.showerror("Error", f"Failed to load image: {e}\n\nSee error_log.txt for details.")
+            messagebox.showerror("Error", f"Failed to load image: {e}\nSee error_log.txt for details.")
+
+    def import_bmp4(self, file_path):
+        if not file_path:
+            return
+        try:
+            with open(file_path, "rb") as f:
+                data = f.read()
+            if len(data) < 16000 + 32:
+                raise ValueError("File too small to be valid BMP4/BM4")
+            pixel_bytes = data[:16000]
+            palette_bytes = data[-32:]
+            # Decode palette: 16 colors, 2 bytes each (G4B4, R4)
+            palette = []
+            for i in range(16):
+                g_b = palette_bytes[i*2]
+                r = palette_bytes[i*2+1] & 0x0F
+                g = (g_b >> 4) & 0x0F
+                b = g_b & 0x0F
+                # Convert 4-bit to 8-bit
+                r8 = r << 4
+                g8 = g << 4
+                b8 = b << 4
+                palette.append((r8, g8, b8))
+            # Decode pixel data
+            img = Image.new("P", (160, 200))
+            img.putpalette([v for rgb in palette for v in rgb] + [0]*(768-3*len(palette)))
+            pixels = []
+            for byte in pixel_bytes:
+                p1 = (byte >> 4) & 0x0F
+                p2 = byte & 0x0F
+                pixels.append(p1)
+                pixels.append(p2)
+            if len(pixels) > 160*200:
+                pixels = pixels[:160*200]
+            img.putdata(pixels)
+            self.image = img
+            self.loaded_palette = palette
+            self.show_original(img)
+            self.update_preview()
+            self.export_btn.config(state=tk.NORMAL)
+            self.set_image_controls_state("normal")
+        except Exception as e:
+            import traceback
+            tb = traceback.format_exc()
+            with open("error_log.txt", "w") as f:
+                f.write(f"Failed to load BMP4/BM4: {e}\n\n{tb}")
+            messagebox.showerror("Error", f"Failed to load BMP4/BM4: {e}\nSee error_log.txt for details.")
 
     def update_preview(self):
         if self.image is None:
