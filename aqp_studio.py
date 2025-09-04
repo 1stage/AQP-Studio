@@ -81,15 +81,32 @@ class AQPStudio:
     # Duplicate __init__ removed
 
     def setup_gui(self):
-        # Image previews at the top with Import/Export buttons beside them
-        preview_frame = tk.Frame(self.root, bg="#D0D0D0")
+        from tkinter import ttk
+        style = ttk.Style()
+        style.theme_use("clam")
+        style.configure("TNotebook", background="#808080", borderwidth=0)
+        style.configure("TNotebook.Tab", background="#A0A0A0", font=("Arial", 10, "bold"))
+        style.map("TNotebook.Tab", background=[("selected", "#D0D0D0")])  # Matches frame background for selected tab
+
+        notebook = ttk.Notebook(self.root)
+        notebook.pack(fill=tk.BOTH, expand=True, padx=4, pady=4)
+
+        # BMP4 tab
+        bmp4_frame = tk.Frame(notebook, bg="#D0D0D0")
+        notebook.add(bmp4_frame, text="BMP4 Images")
+
+        # BMP1 tab (blank)
+        bmp1_frame = tk.Frame(notebook, bg="#D0D0D0")
+        notebook.add(bmp1_frame, text="BMP1 Images")
+        tk.Label(bmp1_frame, text="BMP1 tools coming soon...", bg="#D0D0D0", font=("Arial", 14)).pack(pady=40)
+
+        # All previous widget creation now goes inside bmp4_frame
+        preview_frame = tk.Frame(bmp4_frame, bg="#D0D0D0")
         preview_frame.pack(pady=10, padx=20)
 
         preview_img_width = 480
         preview_img_height = 300
 
-        # Import button to the left of Original Image (custom PNG icon, text below)
-        from PIL import Image, ImageTk
         import_btn_frame = tk.Frame(preview_frame, bg="#D0D0D0")
         import_btn_frame.pack(side=tk.LEFT, padx=(10, 10))
         import_icon = Image.open("assets/import_image.png")
@@ -119,7 +136,6 @@ class AQPStudio:
         self.proc_img_label = tk.Label(self.proc_img_box, bg="#D0D0D0", text="Exported Image", fg="#B0B0B0", font=("Arial", 18))
         self.proc_img_label.pack(expand=True, fill=tk.BOTH)
 
-        # Export button to the right of Export Preview (custom PNG icon, text below)
         export_btn_frame = tk.Frame(preview_frame, bg="#D0D0D0")
         export_btn_frame.pack(side=tk.LEFT, padx=(10, 10))
         export_icon = Image.open("assets/export_image.png")
@@ -139,16 +155,14 @@ class AQPStudio:
         tk.Label(export_btn_frame, text="Export Image", bg="#D0D0D0", font=("Arial", 10)).pack(pady=(2,0))
         export_format_frame = tk.LabelFrame(export_btn_frame, bg="#D0D0D0", text="Export Format")
         export_format_frame.pack(pady=(8,0))
-        for fmt in ["BMP4", "BMP1"]:
+        for fmt in ["BMP4", "PNG"]:
             tk.Radiobutton(export_format_frame, bg="#D0D0D0", text=fmt, variable=self.export_format_var, value=fmt, command=self.update_preview).pack(side=tk.LEFT)
 
-        # Palette options and preview below image previews, centered
-        palette_section_frame = tk.Frame(self.root, bg="#D0D0D0")
+        palette_section_frame = tk.Frame(bmp4_frame, bg="#D0D0D0")
         palette_section_frame.pack(pady=10, fill=tk.X)
         palette_section_frame.grid_columnconfigure(0, weight=1)
         palette_section_frame.grid_columnconfigure(1, weight=1)
 
-        # Image Controls section to the left of Palette Options, with extra left padding
         self.image_controls_frame = tk.LabelFrame(palette_section_frame, bg="#D0D0D0", padx="12", pady="4", text="Image Controls")
         self.image_controls_frame.grid(row=0, column=0, padx=(20,10), sticky="nsew")
         scaling_frame = tk.LabelFrame(self.image_controls_frame, bg="#D0D0D0", padx="6", borderwidth="0", text="Scaling")
@@ -161,7 +175,6 @@ class AQPStudio:
         self.sampling_var.set("bicubic")  # Set Bicubic as default selection
         for method in sampling_methods:
             tk.Radiobutton(sampling_frame, bg="#D0D0D0", text=method.title(), variable=self.sampling_var, value=method, command=self.update_preview).pack(side=tk.LEFT)
-        # Add dithering control
         self.dither_var = tk.StringVar(value="floyd")
         dither_frame = tk.LabelFrame(self.image_controls_frame, bg="#D0D0D0", padx="6", borderwidth="0", text="Dithering")
         dither_frame.pack(fill=tk.X, pady=(2,4))
@@ -176,11 +189,9 @@ class AQPStudio:
         tk.Button(btn_frame, bg="#D0D0D0", text="Save Palette...", command=self.save_palette).pack(side=tk.LEFT, padx=5)
         tk.Checkbutton(palette_frame, padx="54", bg="#D0D0D0", text="Use imported palette", variable=self.force_palette_var, command=self.update_preview).pack(anchor="w")
 
-        # Palette Preview: reduce width to save space
         self.palette_preview_frame = tk.LabelFrame(palette_section_frame, bg="#D0D0D0", text="Current Palette Preview")
         self.palette_preview_frame.grid(row=0, column=2, padx=(10, 30), sticky="nsew")  # Add more right padding
         self.palette_preview_frame.config(width=160)  # Make preview area a bit narrower
-        # Make palette swatches smaller for a more compact preview area
         swatch_height = 1  # Smaller swatch height
         swatch_width = 3   # Smaller swatch width
         self.palette_preview_labels = []
@@ -192,10 +203,8 @@ class AQPStudio:
             self.palette_preview_labels.append((swatch, label))
         self.update_palette_preview()
 
-        # Controls below palette section
-        controls_frame = tk.Frame(self.root, bg="#D0D0D0")
+        controls_frame = tk.Frame(bmp4_frame, bg="#D0D0D0")
         controls_frame.pack(pady=10)
-        # Remove remnant Export Format radio buttons from controls_frame
 
     def set_image_controls_state(self, state):
         # Helper to enable/disable all controls in Image Controls section
@@ -376,14 +385,27 @@ class AQPStudio:
         if self.image is None:
             messagebox.showerror("Error", "No image loaded.")
             return
-        # Ask user for export type
         export_type = self.export_format_var.get()
         if export_type == "BMP4":
             self.export_bmp4()
-        elif export_type == "BMP1":
-            self.export_bmp1()
+        elif export_type == "PNG":
+            self.export_png()
         else:
             messagebox.showerror("Error", "Unknown export type.")
+
+    def export_png(self):
+        # Export the processed image as PNG
+        img = getattr(self, '_export_img', None)
+        if img is None:
+            messagebox.showerror("Error", "No export image available. Please preview first.")
+            return
+        file_path = filedialog.asksaveasfilename(defaultextension=".png", filetypes=[("PNG Image", "*.png")])
+        if not file_path:
+            return
+        try:
+            img.save(file_path, format="PNG")
+        except Exception as e:
+            messagebox.showerror("Error", f"Failed to save PNG: {e}")
 
     def export_bmp1(self):
         # Prepare image: 320x200, 1BPP, 8x8 cells, 2 colors per cell from 16-color palette
