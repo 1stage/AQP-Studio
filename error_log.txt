@@ -1,0 +1,35 @@
+Error in on_sampling_change: 'AQPStudio' object has no attribute 'palette_frame'
+Traceback (most recent call last):
+  File "C:\Users\sph\Box\Retro\Aquarius\Aquarius+\Development\AQP Studio\aqp_studio.py", line 552, in on_sampling_change
+    for child in self.palette_frame.winfo_children():
+                 ^^^^^^^^^^^^^^^^^^
+AttributeError: 'AQPStudio' object has no attribute 'palette_frame'. Did you mean: 'palette_var'?
+
+Error in on_sampling_change: 'AQPStudio' object has no attribute 'palette_frame'
+Traceback (most recent call last):
+  File "C:\Users\sph\Box\Retro\Aquarius\Aquarius+\Development\AQP Studio\aqp_studio.py", line 558, in on_sampling_change
+    for child in self.palette_frame.winfo_children():
+                 ^^^^^^^^^^^^^^^^^^
+AttributeError: 'AQPStudio' object has no attribute 'palette_frame'. Did you mean: 'palette_var'?
+
+Error in on_sampling_change: 'AQPStudio' object has no attribute 'palette_frame'
+Traceback (most recent call last):
+  File "C:\Users\sph\Box\Retro\Aquarius\Aquarius+\Development\AQP Studio\aqp_studio.py", line 552, in on_sampling_change
+    for child in self.palette_frame.winfo_children():
+                 ^^^^^^^^^^^^^^^^^^
+AttributeError: 'AQPStudio' object has no attribute 'palette_frame'. Did you mean: 'palette_var'?
+
+Error in on_sampling_change: 'AQPStudio' object has no attribute 'palette_frame'
+Traceback (most recent call last):
+  File "C:\Users\sph\Box\Retro\Aquarius\Aquarius+\Development\AQP Studio\aqp_studio.py", line 558, in on_sampling_change
+    for child in self.palette_frame.winfo_children():
+                 ^^^^^^^^^^^^^^^^^^
+AttributeError: 'AQPStudio' object has no attribute 'palette_frame'. Did you mean: 'palette_var'?
+
+Error in on_sampling_change: 'AQPStudio' object has no attribute 'palette_frame'
+Traceback (most recent call last):
+  File "C:\Users\sph\Box\Retro\Aquarius\Aquarius+\Development\AQP Studio\aqp_studio.py", line 552, in on_sampling_change
+    for child in self.palette_frame.winfo_children():
+                 ^^^^^^^^^^^^^^^^^^
+AttributeError: 'AQPStudio' object has no attribute 'palette_frame'. Did you mean: 'palette_var'?
+
