@@ -1,9 +1,19 @@
+
 import tkinter as tk
 from tkinter import filedialog, messagebox
 from PIL import Image, ImageTk
 import os
 
 class AQPStudio:
+    def image_icon(self, path, size=(64, 64)):
+        from PIL import Image, ImageTk
+        try:
+            icon = Image.open(path)
+            icon = icon.resize(size, Image.NEAREST)
+            return ImageTk.PhotoImage(icon)
+        except Exception as e:
+            print(f"Error loading icon: {path} - {e}")
+            return None
     def __init__(self, root):
         self.root = root
         self.root.title("AQP Studio")
@@ -82,129 +92,24 @@ class AQPStudio:
 
     def setup_gui(self):
         from tkinter import ttk
+        from tabs.bmp4_tab import BMP4Tab
         style = ttk.Style()
         style.theme_use("clam")
         style.configure("TNotebook", background="#808080", borderwidth=0)
         style.configure("TNotebook.Tab", background="#A0A0A0", font=("Arial", 10, "bold"))
-        style.map("TNotebook.Tab", background=[("selected", "#D0D0D0")])  # Matches frame background for selected tab
+        style.map("TNotebook.Tab", background=[("selected", "#D0D0D0")])
 
         notebook = ttk.Notebook(self.root)
         notebook.pack(fill=tk.BOTH, expand=True, padx=4, pady=4)
 
-        # BMP4 tab
-        bmp4_frame = tk.Frame(notebook, bg="#D0D0D0")
-        notebook.add(bmp4_frame, text="BMP4 Images")
+        # BMP4 tab (modular)
+        bmp4_tab = BMP4Tab(notebook, self)
+        notebook.add(bmp4_tab, text="BMP4 Images")
 
         # BMP1 tab (blank)
         bmp1_frame = tk.Frame(notebook, bg="#D0D0D0")
         notebook.add(bmp1_frame, text="BMP1 Images")
         tk.Label(bmp1_frame, text="BMP1 tools coming soon...", bg="#D0D0D0", font=("Arial", 14)).pack(pady=40)
-
-        # All previous widget creation now goes inside bmp4_frame
-        preview_frame = tk.Frame(bmp4_frame, bg="#D0D0D0")
-        preview_frame.pack(pady=10, padx=20)
-
-        preview_img_width = 480
-        preview_img_height = 300
-
-        import_btn_frame = tk.Frame(preview_frame, bg="#D0D0D0")
-        import_btn_frame.pack(side=tk.LEFT, padx=(10, 10))
-        import_icon = Image.open("assets/import_image.png")
-        import_icon = import_icon.resize((64, 64), Image.NEAREST)
-        self.import_icon_imgtk = ImageTk.PhotoImage(import_icon)
-        self.import_btn = tk.Button(
-            import_btn_frame,
-            image=self.import_icon_imgtk,
-            width=64,
-            height=64,
-            relief=tk.RAISED,
-            bd=4,
-            command=self.import_image
-        )
-        self.import_btn.pack()
-        tk.Label(import_btn_frame, bg="#D0D0D0", text="Import Image", font=("Arial", 10)).pack(pady=(2,0))
-
-        self.orig_img_box = tk.LabelFrame(preview_frame, bg="#D0D0D0", text=" Original Image ", width=preview_img_width+20, height=preview_img_height+36)
-        self.orig_img_box.pack_propagate(False)
-        self.orig_img_box.pack(side=tk.LEFT, padx=10)
-        self.orig_img_label = tk.Label(self.orig_img_box, bg="#D0D0D0", text="Imported Image", fg="#B0B0B0", font=("Arial", 18))
-        self.orig_img_label.pack(expand=True, fill=tk.BOTH)
-
-        self.proc_img_box = tk.LabelFrame(preview_frame, bg="#D0D0D0", text=" Export Preview ", width=preview_img_width+20, height=preview_img_height+36)
-        self.proc_img_box.pack_propagate(False)
-        self.proc_img_box.pack(side=tk.LEFT, padx=10)
-        self.proc_img_label = tk.Label(self.proc_img_box, bg="#D0D0D0", text="Exported Image", fg="#B0B0B0", font=("Arial", 18))
-        self.proc_img_label.pack(expand=True, fill=tk.BOTH)
-
-        export_btn_frame = tk.Frame(preview_frame, bg="#D0D0D0")
-        export_btn_frame.pack(side=tk.LEFT, padx=(10, 10))
-        export_icon = Image.open("assets/export_image.png")
-        export_icon = export_icon.resize((64, 64), Image.NEAREST)
-        self.export_icon_imgtk = ImageTk.PhotoImage(export_icon)
-        self.export_btn = tk.Button(
-            export_btn_frame,
-            image=self.export_icon_imgtk,
-            width=64,
-            height=64,
-            relief=tk.RAISED,
-            bd=4,
-            state=tk.DISABLED,
-            command=self.export_image
-        )
-        self.export_btn.pack()
-        tk.Label(export_btn_frame, text="Export Image", bg="#D0D0D0", font=("Arial", 10)).pack(pady=(2,0))
-        export_format_frame = tk.LabelFrame(export_btn_frame, bg="#D0D0D0", text="Export Format")
-        export_format_frame.pack(pady=(8,0))
-        for fmt in ["BMP4", "PNG"]:
-            tk.Radiobutton(export_format_frame, bg="#D0D0D0", text=fmt, variable=self.export_format_var, value=fmt, command=self.update_preview).pack(side=tk.LEFT)
-
-        palette_section_frame = tk.Frame(bmp4_frame, bg="#D0D0D0")
-        palette_section_frame.pack(pady=10, fill=tk.X)
-        palette_section_frame.grid_columnconfigure(0, weight=1)
-        palette_section_frame.grid_columnconfigure(1, weight=1)
-
-        self.image_controls_frame = tk.LabelFrame(palette_section_frame, bg="#D0D0D0", padx="12", pady="4", text="Image Controls")
-        self.image_controls_frame.grid(row=0, column=0, padx=(20,10), sticky="nsew")
-        scaling_frame = tk.LabelFrame(self.image_controls_frame, bg="#D0D0D0", padx="6", borderwidth="0", text="Scaling")
-        scaling_frame.pack(fill=tk.X, pady=(4,2))
-        for mode in ["letterbox", "stretch", "fill"]:
-            tk.Radiobutton(scaling_frame, bg="#D0D0D0", text=mode.title(), variable=self.scaling_var, value=mode, command=self.update_preview).pack(side=tk.LEFT)
-        sampling_frame = tk.LabelFrame(self.image_controls_frame, bg="#D0D0D0", padx="6", borderwidth="0", text="Sampling")
-        sampling_frame.pack(fill=tk.X, pady=(2,4))
-        sampling_methods = ["bicubic", "bilinear", "lanczos", "nearest"]
-        self.sampling_var.set("bicubic")  # Set Bicubic as default selection
-        for method in sampling_methods:
-            tk.Radiobutton(sampling_frame, bg="#D0D0D0", text=method.title(), variable=self.sampling_var, value=method, command=self.update_preview).pack(side=tk.LEFT)
-        self.dither_var = tk.StringVar(value="floyd")
-        dither_frame = tk.LabelFrame(self.image_controls_frame, bg="#D0D0D0", padx="6", borderwidth="0", text="Dithering")
-        dither_frame.pack(fill=tk.X, pady=(2,4))
-        for dither, label in [("floyd", "Floyd-Steinberg"), ("none", "None")]:
-            tk.Radiobutton(dither_frame, bg="#D0D0D0", text=label, variable=self.dither_var, value=dither, command=self.update_preview).pack(side=tk.LEFT)
-
-        palette_frame = tk.LabelFrame(palette_section_frame, bg="#D0D0D0", padx="12", pady="4", text="Palette Options")
-        palette_frame.grid(row=0, column=1, padx=10, sticky="nsew")
-        btn_frame = tk.Frame(palette_frame, bg="#D0D0D0",)
-        btn_frame.pack(pady=(4, 8))
-        tk.Button(btn_frame, bg="#D0D0D0", text="Load Palette...", command=self.load_palette).pack(side=tk.LEFT, padx=5)
-        tk.Button(btn_frame, bg="#D0D0D0", text="Save Palette...", command=self.save_palette).pack(side=tk.LEFT, padx=5)
-        tk.Checkbutton(palette_frame, padx="54", bg="#D0D0D0", text="Use imported palette", variable=self.force_palette_var, command=self.update_preview).pack(anchor="w")
-
-        self.palette_preview_frame = tk.LabelFrame(palette_section_frame, bg="#D0D0D0", text="Current Palette Preview")
-        self.palette_preview_frame.grid(row=0, column=2, padx=(10, 30), sticky="nsew")  # Add more right padding
-        self.palette_preview_frame.config(width=160)  # Make preview area a bit narrower
-        swatch_height = 1  # Smaller swatch height
-        swatch_width = 3   # Smaller swatch width
-        self.palette_preview_labels = []
-        for i in range(16):
-            swatch = tk.Label(self.palette_preview_frame, width=swatch_width, height=swatch_height, relief=tk.RAISED)
-            swatch.grid(row=i, column=0, padx=2, pady=2)
-            label = tk.Label(self.palette_preview_frame, text="", font=("Consolas", 9), anchor="w", width=16)
-            label.grid(row=i, column=1, sticky="w", padx=2)
-            self.palette_preview_labels.append((swatch, label))
-        self.update_palette_preview()
-
-        controls_frame = tk.Frame(bmp4_frame, bg="#D0D0D0")
-        controls_frame.pack(pady=10)
 
     def set_image_controls_state(self, state):
         # Helper to enable/disable all controls in Image Controls section
@@ -569,10 +474,6 @@ class AQPStudio:
         pal_img.putdata(idxs.reshape(-1))
         return pal_img
 
-if __name__ == "__main__":
-    root = tk.Tk()
-    app = AQPStudio(root)
-    root.mainloop()
 
 import tkinter as tk
 from tkinter import filedialog, messagebox
