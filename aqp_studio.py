@@ -4,6 +4,20 @@ from PIL import Image, ImageTk
 import os
 
 class AQPStudio:
+    def __init__(self, root):
+        self.root = root
+        self.root.title("AQP Studio")
+        self.root.configure(bg="#D0D0D0")  # 20% grey background
+        self.image = None
+        self.img_preview = None
+        self.loaded_palette = None  # List of (R,G,B) tuples
+        self.palette_var = tk.BooleanVar(value=True)
+        self.force_palette_var = tk.BooleanVar(value=False)
+        self.scaling_var = tk.StringVar(value="letterbox")
+        self.sampling_var = tk.StringVar(value="bicubic")
+        self.export_format_var = tk.StringVar(value="BMP4")
+        self.setup_gui()
+
     def save_palette(self):
         # Get current palette (forced or preview)
         if self.force_palette_var.get() and self.loaded_palette:
@@ -64,35 +78,22 @@ class AQPStudio:
             self.update_preview()
         except Exception as e:
             messagebox.showerror("Error", f"Failed to load palette: {e}")
-    def __init__(self, root):
-        self.root = root
-        self.root.title("AQP Studio")
-        self.image = None
-        self.img_preview = None
-        self.loaded_palette = None  # List of (R,G,B) tuples
-        # Palette option variables (must be defined before controls)
-        self.palette_var = tk.BooleanVar(value=True)
-        self.force_palette_var = tk.BooleanVar(value=False)
-        # Control variables (must be defined before controls)
-        self.scaling_var = tk.StringVar(value="letterbox")
-        self.sampling_var = tk.StringVar(value="nearest")
-        self.export_format_var = tk.StringVar(value="BMP4")
-        self.setup_gui()
+    # Duplicate __init__ removed
 
     def setup_gui(self):
         # Image previews at the top with Import/Export buttons beside them
-        preview_frame = tk.Frame(self.root)
-        preview_frame.pack(pady=10, padx=20)  # Add horizontal padding to the frame
+        preview_frame = tk.Frame(self.root, bg="#D0D0D0")
+        preview_frame.pack(pady=10, padx=20)
 
         preview_img_width = 480
         preview_img_height = 300
 
         # Import button to the left of Original Image (custom PNG icon, text below)
         from PIL import Image, ImageTk
-        import_btn_frame = tk.Frame(preview_frame)
+        import_btn_frame = tk.Frame(preview_frame, bg="#D0D0D0")
         import_btn_frame.pack(side=tk.LEFT, padx=(10, 10))
         import_icon = Image.open("assets/import_image.png")
-        import_icon = import_icon.resize((48, 48), Image.NEAREST)
+        import_icon = import_icon.resize((64, 64), Image.NEAREST)
         self.import_icon_imgtk = ImageTk.PhotoImage(import_icon)
         self.import_btn = tk.Button(
             import_btn_frame,
@@ -104,25 +105,25 @@ class AQPStudio:
             command=self.import_image
         )
         self.import_btn.pack()
-        tk.Label(import_btn_frame, text="Import Image", font=("Arial", 10)).pack(pady=(2,0))
+        tk.Label(import_btn_frame, bg="#D0D0D0", text="Import Image", font=("Arial", 10)).pack(pady=(2,0))
 
-        self.orig_img_box = tk.LabelFrame(preview_frame, text="Original Image", width=preview_img_width+20, height=preview_img_height+20)
+        self.orig_img_box = tk.LabelFrame(preview_frame, bg="#D0D0D0", text=" Original Image ", width=preview_img_width+20, height=preview_img_height+36)
         self.orig_img_box.pack_propagate(False)
         self.orig_img_box.pack(side=tk.LEFT, padx=10)
-        self.orig_img_label = tk.Label(self.orig_img_box, text="Import Image", fg="#cccccc", font=("Arial", 18))
+        self.orig_img_label = tk.Label(self.orig_img_box, bg="#D0D0D0", text="Imported Image", fg="#B0B0B0", font=("Arial", 18))
         self.orig_img_label.pack(expand=True, fill=tk.BOTH)
 
-        self.proc_img_box = tk.LabelFrame(preview_frame, text="Export Preview", width=preview_img_width+20, height=preview_img_height+20)
+        self.proc_img_box = tk.LabelFrame(preview_frame, bg="#D0D0D0", text=" Export Preview ", width=preview_img_width+20, height=preview_img_height+36)
         self.proc_img_box.pack_propagate(False)
         self.proc_img_box.pack(side=tk.LEFT, padx=10)
-        self.proc_img_label = tk.Label(self.proc_img_box, text="Export Preview", fg="#cccccc", font=("Arial", 18))
+        self.proc_img_label = tk.Label(self.proc_img_box, bg="#D0D0D0", text="Exported Image", fg="#B0B0B0", font=("Arial", 18))
         self.proc_img_label.pack(expand=True, fill=tk.BOTH)
 
         # Export button to the right of Export Preview (custom PNG icon, text below)
-        export_btn_frame = tk.Frame(preview_frame)
+        export_btn_frame = tk.Frame(preview_frame, bg="#D0D0D0")
         export_btn_frame.pack(side=tk.LEFT, padx=(10, 10))
         export_icon = Image.open("assets/export_image.png")
-        export_icon = export_icon.resize((48, 48), Image.NEAREST)
+        export_icon = export_icon.resize((64, 64), Image.NEAREST)
         self.export_icon_imgtk = ImageTk.PhotoImage(export_icon)
         self.export_btn = tk.Button(
             export_btn_frame,
@@ -135,62 +136,64 @@ class AQPStudio:
             command=self.export_image
         )
         self.export_btn.pack()
-        tk.Label(export_btn_frame, text="Export Image", font=("Arial", 10)).pack(pady=(2,0))
-        export_format_frame = tk.LabelFrame(export_btn_frame, text="Export Format")
+        tk.Label(export_btn_frame, text="Export Image", bg="#D0D0D0", font=("Arial", 10)).pack(pady=(2,0))
+        export_format_frame = tk.LabelFrame(export_btn_frame, bg="#D0D0D0", text="Export Format")
         export_format_frame.pack(pady=(8,0))
         for fmt in ["BMP4", "BMP1"]:
-            tk.Radiobutton(export_format_frame, text=fmt, variable=self.export_format_var, value=fmt, command=self.update_preview).pack(side=tk.LEFT)
+            tk.Radiobutton(export_format_frame, bg="#D0D0D0", text=fmt, variable=self.export_format_var, value=fmt, command=self.update_preview).pack(side=tk.LEFT)
 
         # Palette options and preview below image previews, centered
-        palette_section_frame = tk.Frame(self.root)
+        palette_section_frame = tk.Frame(self.root, bg="#D0D0D0")
         palette_section_frame.pack(pady=10, fill=tk.X)
         palette_section_frame.grid_columnconfigure(0, weight=1)
         palette_section_frame.grid_columnconfigure(1, weight=1)
 
         # Image Controls section to the left of Palette Options, with extra left padding
-        self.image_controls_frame = tk.LabelFrame(palette_section_frame, text="Image Controls")
+        self.image_controls_frame = tk.LabelFrame(palette_section_frame, bg="#D0D0D0", padx="12", pady="4", text="Image Controls")
         self.image_controls_frame.grid(row=0, column=0, padx=(20,10), sticky="nsew")
-        scaling_frame = tk.LabelFrame(self.image_controls_frame, text="Scaling Mode")
+        scaling_frame = tk.LabelFrame(self.image_controls_frame, bg="#D0D0D0", padx="6", borderwidth="0", text="Scaling")
         scaling_frame.pack(fill=tk.X, pady=(4,2))
         for mode in ["letterbox", "stretch", "fill"]:
-            tk.Radiobutton(scaling_frame, text=mode.title(), variable=self.scaling_var, value=mode, command=self.update_preview).pack(side=tk.LEFT)
-        sampling_frame = tk.LabelFrame(self.image_controls_frame, text="Sampling Method")
+            tk.Radiobutton(scaling_frame, bg="#D0D0D0", text=mode.title(), variable=self.scaling_var, value=mode, command=self.update_preview).pack(side=tk.LEFT)
+        sampling_frame = tk.LabelFrame(self.image_controls_frame, bg="#D0D0D0", padx="6", borderwidth="0", text="Sampling")
         sampling_frame.pack(fill=tk.X, pady=(2,4))
-        for method in ["nearest", "bilinear", "bicubic", "lanczos"]:
-            tk.Radiobutton(sampling_frame, text=method.title(), variable=self.sampling_var, value=method, command=self.update_preview).pack(side=tk.LEFT)
+        sampling_methods = ["bicubic", "bilinear", "lanczos", "nearest"]
+        self.sampling_var.set("bicubic")  # Set Bicubic as default selection
+        for method in sampling_methods:
+            tk.Radiobutton(sampling_frame, bg="#D0D0D0", text=method.title(), variable=self.sampling_var, value=method, command=self.update_preview).pack(side=tk.LEFT)
         # Add dithering control
         self.dither_var = tk.StringVar(value="floyd")
-        dither_frame = tk.LabelFrame(self.image_controls_frame, text="Dithering")
+        dither_frame = tk.LabelFrame(self.image_controls_frame, bg="#D0D0D0", padx="6", borderwidth="0", text="Dithering")
         dither_frame.pack(fill=tk.X, pady=(2,4))
         for dither, label in [("floyd", "Floyd-Steinberg"), ("none", "None")]:
-            tk.Radiobutton(dither_frame, text=label, variable=self.dither_var, value=dither, command=self.update_preview).pack(side=tk.LEFT)
+            tk.Radiobutton(dither_frame, bg="#D0D0D0", text=label, variable=self.dither_var, value=dither, command=self.update_preview).pack(side=tk.LEFT)
 
-        palette_frame = tk.LabelFrame(palette_section_frame, text="Palette Options")
+        palette_frame = tk.LabelFrame(palette_section_frame, bg="#D0D0D0", padx="12", pady="4", text="Palette Options")
         palette_frame.grid(row=0, column=1, padx=10, sticky="nsew")
-        btn_frame = tk.Frame(palette_frame)
+        btn_frame = tk.Frame(palette_frame, bg="#D0D0D0",)
         btn_frame.pack(pady=(4, 8))
-        tk.Button(btn_frame, text="Load Palette...", command=self.load_palette).pack(side=tk.LEFT, padx=5)
-        tk.Button(btn_frame, text="Save Palette...", command=self.save_palette).pack(side=tk.LEFT, padx=5)
-        tk.Checkbutton(palette_frame, text="Force palette on image", variable=self.force_palette_var, command=self.update_preview).pack(anchor="w")
+        tk.Button(btn_frame, bg="#D0D0D0", text="Load Palette...", command=self.load_palette).pack(side=tk.LEFT, padx=5)
+        tk.Button(btn_frame, bg="#D0D0D0", text="Save Palette...", command=self.save_palette).pack(side=tk.LEFT, padx=5)
+        tk.Checkbutton(palette_frame, padx="54", bg="#D0D0D0", text="Use imported palette", variable=self.force_palette_var, command=self.update_preview).pack(anchor="w")
 
         # Palette Preview: reduce width to save space
-        self.palette_preview_frame = tk.LabelFrame(palette_section_frame, text="Current Palette Preview")
-        self.palette_preview_frame.grid(row=0, column=2, padx=(10, 0), sticky="nsew")
-        self.palette_preview_frame.config(width=180)  # Reduce width
-        # Reduce palette swatch size for more compact preview area
-        swatch_height = 2  # tkinter Label height in text lines
-        swatch_width = 4   # tkinter Label width in text characters
+        self.palette_preview_frame = tk.LabelFrame(palette_section_frame, bg="#D0D0D0", text="Current Palette Preview")
+        self.palette_preview_frame.grid(row=0, column=2, padx=(10, 30), sticky="nsew")  # Add more right padding
+        self.palette_preview_frame.config(width=160)  # Make preview area a bit narrower
+        # Make palette swatches smaller for a more compact preview area
+        swatch_height = 1  # Smaller swatch height
+        swatch_width = 3   # Smaller swatch width
         self.palette_preview_labels = []
         for i in range(16):
             swatch = tk.Label(self.palette_preview_frame, width=swatch_width, height=swatch_height, relief=tk.RAISED)
             swatch.grid(row=i, column=0, padx=2, pady=2)
-            label = tk.Label(self.palette_preview_frame, text="", font=("Consolas", 9), anchor="w", width=18)
+            label = tk.Label(self.palette_preview_frame, text="", font=("Consolas", 9), anchor="w", width=16)
             label.grid(row=i, column=1, sticky="w", padx=2)
             self.palette_preview_labels.append((swatch, label))
         self.update_palette_preview()
 
         # Controls below palette section
-        controls_frame = tk.Frame(self.root)
+        controls_frame = tk.Frame(self.root, bg="#D0D0D0")
         controls_frame.pack(pady=10)
         # Remove remnant Export Format radio buttons from controls_frame
 
@@ -207,7 +210,9 @@ class AQPStudio:
                         pass
 
     def import_image(self):
-        file_path = filedialog.askopenfilename(filetypes=[("Image Files", "*.png;*.jpg;*.jpeg;*.bmp;*.bmp4;*.bm4")])
+        file_path = filedialog.askopenfilename(filetypes=[
+            ("Image Files", "*.png;*.jpg;*.jpeg;*.bmp;*.bmp4;*.bm4;*.gif;*.tiff;*.tif;*.webp;*.ico")
+        ])
         if not file_path:
             return
         ext = os.path.splitext(file_path)[1].lower()
