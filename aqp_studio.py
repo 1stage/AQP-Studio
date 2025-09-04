@@ -2,6 +2,7 @@ import tkinter as tk
 from tkinter import filedialog, messagebox
 from PIL import Image, ImageTk
 import os
+from tkinter import ttk
 
 class AQPStudio:
     def __init__(self, root):
@@ -15,81 +16,30 @@ class AQPStudio:
         self.force_palette_var = tk.BooleanVar(value=False)
         self.scaling_var = tk.StringVar(value="letterbox")
         self.sampling_var = tk.StringVar(value="bicubic")
-        self.export_format_var = tk.StringVar(value="BMP4")
-        self.setup_gui()
-
-    def save_palette(self):
-        # Get current palette (forced or preview)
-        if self.force_palette_var.get() and self.loaded_palette:
-            palette = list(self.loaded_palette)[:16]
-            while len(palette) < 16:
-                palette.append((0,0,0))
-        else:
-            palette = getattr(self, '_export_palette', [(0,0,0)]*16)
-            palette = list(palette)[:16]
-            while len(palette) < 16:
-                palette.append((0,0,0))
-        file_path = filedialog.asksaveasfilename(defaultextension=".pal", filetypes=[("Palette Files", "*.pal")])
-        if not file_path:
-            return
-        try:
-            with open(file_path, "w") as f:
-                f.write("JASC-PAL\n0100\n16\n")
-                for r, g, b in palette:
-                    f.write(f"{r} {g} {b}\n")
-        except Exception as e:
-            import traceback
-            tb = traceback.format_exc()
-            with open("error_log.txt", "w") as ef:
-                ef.write(f"Failed to save palette: {e}\n\n{tb}")
-            messagebox.showerror("Error", f"Failed to save palette: {e}\nSee error_log.txt for details.")
-    def set_export_image(self, img, palette):
-        self._export_img = img
-        self._export_palette = palette
-    def get_padded_palette(self, img):
-        pal = img.getpalette() if img.mode == "P" else None
-        if pal is None:
-            pal = [0] * 48
-        else:
-            pal = list(pal[:48])
-            if len(pal) < 48:
-                pal += [0] * (48 - len(pal))
-        return [(pal[i*3], pal[i*3+1], pal[i*3+2]) for i in range(16)]
-    def load_palette(self):
-        file_path = filedialog.askopenfilename(filetypes=[("Palette Files", "*.pal")])
-        if not file_path:
-            return
-        try:
-            with open(file_path, "r") as f:
-                lines = f.readlines()
-            # JASC-PAL format: skip header
-            if lines[0].strip() != "JASC-PAL":
-                raise ValueError("Not a JASC-PAL file")
-            count = int(lines[2].strip())
-            palette = []
-            for line in lines[3:3+count]:
-                r, g, b = map(int, line.strip().split())
-                palette.append((r, g, b))
-            if len(palette) != 16:
-                raise ValueError("Palette must have 16 colors")
-            self.loaded_palette = palette
-            # After loading palette, set Force palette on image checkbox
-            self.force_palette_var.set(True)
-            self.update_preview()
-        except Exception as e:
-            messagebox.showerror("Error", f"Failed to load palette: {e}")
-    # Duplicate __init__ removed
-
     def setup_gui(self):
-        # Image previews at the top with Import/Export buttons beside them
-        preview_frame = tk.Frame(self.root, bg="#D0D0D0")
-        preview_frame.pack(pady=10, padx=20)
+        style = ttk.Style()
+        style.theme_use("clam")  # Use a visually connected theme
+        style.configure("TNotebook", background="#D0D0D0", borderwidth=0)
+        style.configure("TNotebook.Tab", padding=[12, 6], font=("Arial", 11))
+
+        notebook = ttk.Notebook(self.root, style="TNotebook")
+        notebook.pack(fill=tk.BOTH, expand=True, padx=4, pady=4)
+
+        # BMP4 Tools tab
+        bmp4_frame = ttk.Frame(notebook, padding=8, style="TFrame")
+        notebook.add(bmp4_frame, text="BMP4 Tools")
+
+        # BMP1 Tools tab (placeholder)
+        bmp1_frame = ttk.Frame(notebook, padding=8, style="TFrame")
+        notebook.add(bmp1_frame, text="BMP1 Tools")
 
         preview_img_width = 480
         preview_img_height = 300
 
+        preview_frame = tk.Frame(bmp4_frame, bg="#D0D0D0", highlightbackground="#A0A0A0", highlightthickness=1)
+        preview_frame.pack(pady=10, padx=20)
+
         # Import button to the left of Original Image (custom PNG icon, text below)
-        from PIL import Image, ImageTk
         import_btn_frame = tk.Frame(preview_frame, bg="#D0D0D0")
         import_btn_frame.pack(side=tk.LEFT, padx=(10, 10))
         import_icon = Image.open("assets/import_image.png")
@@ -140,10 +90,9 @@ class AQPStudio:
         export_format_frame = tk.LabelFrame(export_btn_frame, bg="#D0D0D0", text="Export Format")
         export_format_frame.pack(pady=(8,0))
         for fmt in ["BMP4", "BMP1"]:
-            tk.Radiobutton(export_format_frame, bg="#D0D0D0", text=fmt, variable=self.export_format_var, value=fmt, command=self.update_preview).pack(side=tk.LEFT)
 
         # Palette options and preview below image previews, centered
-        palette_section_frame = tk.Frame(self.root, bg="#D0D0D0")
+        palette_section_frame = tk.Frame(bmp4_frame, bg="#D0D0D0")
         palette_section_frame.pack(pady=10, fill=tk.X)
         palette_section_frame.grid_columnconfigure(0, weight=1)
         palette_section_frame.grid_columnconfigure(1, weight=1)
@@ -193,54 +142,69 @@ class AQPStudio:
         self.update_palette_preview()
 
         # Controls below palette section
-        controls_frame = tk.Frame(self.root, bg="#D0D0D0")
+        controls_frame = tk.Frame(bmp4_frame, bg="#D0D0D0")
         controls_frame.pack(pady=10)
         # Remove remnant Export Format radio buttons from controls_frame
+    # All widget creation is now inside setup_gui and properly indented
 
-    def set_image_controls_state(self, state):
-        # Helper to enable/disable all controls in Image Controls section
-        for child in self.image_controls_frame.winfo_children():
-            try:
-                child.config(state=state)
-            except:
-                for subchild in child.winfo_children():
-                    try:
-                        subchild.config(state=state)
-                    except:
-                        pass
+        # Palette options and preview below image previews, centered
+        palette_section_frame = tk.Frame(bmp4_frame, bg="#D0D0D0")
+        palette_section_frame.pack(pady=10, fill=tk.X)
+        palette_section_frame.grid_columnconfigure(0, weight=1)
+        palette_section_frame.grid_columnconfigure(1, weight=1)
 
-    def import_image(self):
-        file_path = filedialog.askopenfilename(filetypes=[
-            ("Image Files", "*.png;*.jpg;*.jpeg;*.bmp;*.bmp4;*.bm4;*.gif;*.tiff;*.tif;*.webp;*.ico")
-        ])
-        if not file_path:
-            return
-        ext = os.path.splitext(file_path)[1].lower()
-        if ext in [".bmp4", ".bm4"]:
-            self.import_bmp4(file_path)
-            return
-        try:
-            self.image = Image.open(file_path)
-            self.show_original(self.image)
-            self.update_preview()
-            self.export_btn.config(state=tk.NORMAL)
-            self.set_image_controls_state("normal")
-        except Exception as e:
-            import traceback
-            tb = traceback.format_exc()
-            with open("error_log.txt", "w") as f:
-                f.write(f"Failed to load image: {e}\n\n{tb}")
-            messagebox.showerror("Error", f"Failed to load image: {e}\nSee error_log.txt for details.")
+        # Image Controls section to the left of Palette Options, with extra left padding
+        self.image_controls_frame = tk.LabelFrame(palette_section_frame, bg="#D0D0D0", padx="12", pady="4", text="Image Controls")
+        self.image_controls_frame.grid(row=0, column=0, padx=(20,10), sticky="nsew")
+        scaling_frame = tk.LabelFrame(self.image_controls_frame, bg="#D0D0D0", padx="6", borderwidth="0", text="Scaling")
+        scaling_frame.pack(fill=tk.X, pady=(4,2))
+        for mode in ["letterbox", "stretch", "fill"]:
+            tk.Radiobutton(scaling_frame, bg="#D0D0D0", text=mode.title(), variable=self.scaling_var, value=mode, command=self.update_preview).pack(side=tk.LEFT)
+        sampling_frame = tk.LabelFrame(self.image_controls_frame, bg="#D0D0D0", padx="6", borderwidth="0", text="Sampling")
+        sampling_frame.pack(fill=tk.X, pady=(2,4))
+        sampling_methods = ["bicubic", "bilinear", "lanczos", "nearest"]
+        self.sampling_var.set("bicubic")  # Set Bicubic as default selection
+        for method in sampling_methods:
+            tk.Radiobutton(sampling_frame, bg="#D0D0D0", text=method.title(), variable=self.sampling_var, value=method, command=self.update_preview).pack(side=tk.LEFT)
+        # Add dithering control
+        self.dither_var = tk.StringVar(value="floyd")
+        dither_frame = tk.LabelFrame(self.image_controls_frame, bg="#D0D0D0", padx="6", borderwidth="0", text="Dithering")
+        dither_frame.pack(fill=tk.X, pady=(2,4))
+        for dither, label in [("floyd", "Floyd-Steinberg"), ("none", "None")]:
+            tk.Radiobutton(dither_frame, bg="#D0D0D0", text=label, variable=self.dither_var, value=dither, command=self.update_preview).pack(side=tk.LEFT)
+
+        palette_frame = tk.LabelFrame(palette_section_frame, bg="#D0D0D0", padx="12", pady="4", text="Palette Options")
+        palette_frame.grid(row=0, column=1, padx=10, sticky="nsew")
+        btn_frame = tk.Frame(palette_frame, bg="#D0D0D0",)
+        btn_frame.pack(pady=(4, 8))
+        tk.Button(btn_frame, bg="#D0D0D0", text="Load Palette...", command=self.load_palette).pack(side=tk.LEFT, padx=5)
+        tk.Button(btn_frame, bg="#D0D0D0", text="Save Palette...", command=self.save_palette).pack(side=tk.LEFT, padx=5)
+        tk.Checkbutton(palette_frame, padx="54", bg="#D0D0D0", text="Use imported palette", variable=self.force_palette_var, command=self.update_preview).pack(anchor="w")
+
+        # Palette Preview: reduce width to save space
+        self.palette_preview_frame = tk.LabelFrame(palette_section_frame, bg="#D0D0D0", text="Current Palette Preview")
+        self.palette_preview_frame.grid(row=0, column=2, padx=(10, 30), sticky="nsew")  # Add more right padding
+        self.palette_preview_frame.config(width=160)  # Make preview area a bit narrower
+        # Make palette swatches smaller for a more compact preview area
+        swatch_height = 1  # Smaller swatch height
+        swatch_width = 3   # Smaller swatch width
+        self.palette_preview_labels = []
+        for i in range(16):
+            swatch = tk.Label(self.palette_preview_frame, width=swatch_width, height=swatch_height, relief=tk.RAISED)
+            swatch.grid(row=i, column=0, padx=2, pady=2)
+            label = tk.Label(self.palette_preview_frame, text="", font=("Consolas", 9), anchor="w", width=16)
+            label.grid(row=i, column=1, sticky="w", padx=2)
+            self.palette_preview_labels.append((swatch, label))
+        self.update_palette_preview()
+
+        # Controls below palette section
+        controls_frame = tk.Frame(bmp4_frame, bg="#D0D0D0")
+        controls_frame.pack(pady=10)
 
     def import_bmp4(self, file_path):
-        if not file_path:
-            return
         try:
             with open(file_path, "rb") as f:
                 data = f.read()
-            if len(data) < 16000 + 32:
-                raise ValueError("File too small to be valid BMP4/BM4")
-            pixel_bytes = data[:16000]
             palette_bytes = data[-32:]
             # Decode palette: 16 colors, 2 bytes each (G4B4, R4)
             palette = []
@@ -258,6 +222,7 @@ class AQPStudio:
             img = Image.new("P", (160, 200))
             img.putpalette([v for rgb in palette for v in rgb] + [0]*(768-3*len(palette)))
             pixels = []
+            pixel_bytes = data[:-32]
             for byte in pixel_bytes:
                 p1 = (byte >> 4) & 0x0F
                 p2 = byte & 0x0F
@@ -275,7 +240,7 @@ class AQPStudio:
         except Exception as e:
             import traceback
             tb = traceback.format_exc()
-            with open("error_log.txt", "w") as f:
+            with open("error_log.txt", "a") as f:
                 f.write(f"Failed to load BMP4/BM4: {e}\n\n{tb}")
             messagebox.showerror("Error", f"Failed to load BMP4/BM4: {e}\nSee error_log.txt for details.")
 
