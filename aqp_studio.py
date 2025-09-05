@@ -2,6 +2,16 @@ import tkinter as tk
 from tkinter import filedialog, messagebox
 from PIL import Image, ImageTk
 import os
+import sys
+
+# Helper for asset path resolution (PyInstaller compatibility)
+def resource_path(relative_path):
+    try:
+        # PyInstaller creates a temp folder and stores path in _MEIPASS
+        base_path = sys._MEIPASS
+    except AttributeError:
+        base_path = os.path.abspath(".")
+    return os.path.join(base_path, relative_path)
 
 class AQPStudio:
     def __init__(self, root):
@@ -109,7 +119,7 @@ class AQPStudio:
 
         import_btn_frame = tk.Frame(preview_frame, bg="#D0D0D0")
         import_btn_frame.pack(side=tk.LEFT, padx=(10, 10))
-        import_icon = Image.open("assets/import_image.png")
+        import_icon = Image.open(resource_path("assets/import_image.png"))
         import_icon = import_icon.resize((64, 64), Image.NEAREST)
         self.import_icon_imgtk = ImageTk.PhotoImage(import_icon)
         self.import_btn = tk.Button(
@@ -138,7 +148,7 @@ class AQPStudio:
 
         export_btn_frame = tk.Frame(preview_frame, bg="#D0D0D0")
         export_btn_frame.pack(side=tk.LEFT, padx=(10, 10))
-        export_icon = Image.open("assets/export_image.png")
+        export_icon = Image.open(resource_path("assets/export_image.png"))
         export_icon = export_icon.resize((64, 64), Image.NEAREST)
         self.export_icon_imgtk = ImageTk.PhotoImage(export_icon)
         self.export_btn = tk.Button(
@@ -643,5 +653,10 @@ class AQPStudio:
 
 if __name__ == "__main__":
     root = tk.Tk()
+    # Set custom window/taskbar icon
+    try:
+        root.iconbitmap(resource_path("win-icon.ico"))
+    except Exception as e:
+        print(f"Could not set window icon: {e}")
     app = AQPStudio(root)
     root.mainloop()
