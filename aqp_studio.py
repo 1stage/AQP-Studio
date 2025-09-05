@@ -1,4 +1,3 @@
-
 import tkinter as tk
 from tkinter import filedialog, messagebox
 from PIL import Image, ImageTk
@@ -156,7 +155,7 @@ class AQPStudio:
         tk.Label(export_btn_frame, text="Export Image", bg="#D0D0D0", font=("Arial", 10)).pack(pady=(2,0))
         export_format_frame = tk.LabelFrame(export_btn_frame, bg="#D0D0D0", text="Export Format")
         export_format_frame.pack(pady=(8,0))
-        for fmt in ["BMP4", "PNG"]:
+        for fmt in ["BMP4", "BMP1", "PNG"]:
             tk.Radiobutton(export_format_frame, bg="#D0D0D0", text=fmt, variable=self.export_format_var, value=fmt, command=self.update_preview).pack(side=tk.LEFT)
 
         palette_section_frame = tk.Frame(bmp4_frame, bg="#D0D0D0")
@@ -221,13 +220,16 @@ class AQPStudio:
 
     def import_image(self):
         file_path = filedialog.askopenfilename(filetypes=[
-            ("Image Files", "*.png;*.jpg;*.jpeg;*.bmp;*.bmp4;*.bm4;*.gif;*.tiff;*.tif;*.webp;*.ico")
+            ("Image Files", "*.png;*.jpg;*.jpeg;*.bmp;*.bmp4;*.bm4;*.bmp1;*.bm1;*.gif;*.tiff;*.tif;*.webp;*.ico")
         ])
         if not file_path:
             return
         ext = os.path.splitext(file_path)[1].lower()
         if ext in [".bmp4", ".bm4"]:
             self.import_bmp4(file_path)
+            return
+        if ext in [".bmp1", ".bm1"]:
+            self.import_bmp1(file_path)
             return
         try:
             self.image = Image.open(file_path)
@@ -241,6 +243,78 @@ class AQPStudio:
             with open("error_log.txt", "w") as f:
                 f.write(f"Failed to load image: {e}\n\n{tb}")
             messagebox.showerror("Error", f"Failed to load image: {e}\nSee error_log.txt for details.")
+    def import_bmp1(self, file_path):
+        if not file_path:
+            return
+        try:
+            with open(file_path, "rb") as f:
+                data = f.read()
+            if len(data) < 8000 + 1000 + 32:
+                raise ValueError("File too small to be valid BMP1/BM1")
+            # Parse color cells and palette only, ignore bitmap
+            cell_bytes = data[8000:9000]
+            palette_bytes = data[9000:9032]
+            # Decode palette: 16 colors, 2 bytes each (Aquarius+ format)
+            palette = []
+            for i in range(16):
+                b0 = palette_bytes[i*2]
+                b1 = palette_bytes[i*2+1]
+                g = (b0 >> 4) & 0x0F
+                b = b0 & 0x0F
+                r = b1 & 0x0F
+                palette.append((r*17, g*17, b*17))
+            cell_colors = []
+            for b in cell_bytes:
+                fg = (b >> 4) & 0x0F
+                bg = b & 0x0F
+                cell_colors.append((fg, bg))
+            # Bitmap parsing enabled; placeholder code commented for reference
+            bitmap_bytes = data[:8000]
+            img = Image.new("P", (320, 200))
+            img.putpalette([v for rgb in palette for v in rgb] + [0]*(768-3*len(palette)))
+            pixels = [0] * (320*200)
+            # Correct row-major bitmap parsing
+            for y in range(200):
+                for x in range(320):
+                    bit_index = y * 320 + x
+                    byte_index = bit_index // 8
+                    bit = 7 - (bit_index % 8)
+                    if byte_index < len(bitmap_bytes):
+                        byte = bitmap_bytes[byte_index]
+                        val = (byte >> bit) & 1
+                        # Find cell for this pixel
+                        cell_x = x // 8
+                        cell_y = y // 8
+                        cell_idx = cell_y * 40 + cell_x
+                        fg, bg = cell_colors[cell_idx]
+                        color = fg if val else bg
+                        pixels[y * 320 + x] = color
+            img.putdata(pixels)
+            # --- Placeholder code for reference ---
+            # for cell_idx, (fg, bg) in enumerate(cell_colors):
+            #     cell_y = (cell_idx // 40) * 8
+            #     cell_x = (cell_idx % 40) * 8
+            #     # Draw 2-pixel wide background frame
+            #     for y in range(8):
+            #         for x in range(8):
+            #             if x < 2 or x > 5 or y < 2 or y > 5:
+            #                 pixels[(cell_y + y) * 320 + (cell_x + x)] = bg
+            #     # Draw centered 4x4 foreground box
+            #     for y in range(2, 6):
+            #         for x in range(2, 6):
+            #             pixels[(cell_y + y) * 320 + (cell_x + x)] = fg
+            self.image = img
+            self.loaded_palette = palette
+            self.show_original(img)
+            self.update_preview()
+            self.export_btn.config(state=tk.NORMAL)
+            self.set_image_controls_state("normal")
+        except Exception as e:
+            import traceback
+            tb = traceback.format_exc()
+            with open("error_log.txt", "w") as f:
+                f.write(f"Failed to load BMP1/BM1: {e}\n\n{tb}")
+            messagebox.showerror("Error", f"Failed to load BMP1/BM1: {e}\nSee error_log.txt for details.")
 
     def import_bmp4(self, file_path):
         if not file_path:
@@ -387,12 +461,80 @@ class AQPStudio:
             messagebox.showerror("Error", "No image loaded.")
             return
         export_type = self.export_format_var.get()
+        with open("error_log.txt", "a") as f:
+            f.write(f"[DEBUG] export_type: {export_type}\n")
         if export_type == "BMP4":
             self.export_bmp4()
+        elif export_type == "BMP1":
+            self.export_bmp1()
         elif export_type == "PNG":
             self.export_png()
         else:
             messagebox.showerror("Error", "Unknown export type.")
+    def export_bmp1(self):
+
+        # Use processed export preview image and palette
+        img = getattr(self, '_export_img', None)
+        palette = getattr(self, '_export_palette', None)
+        if img is None or palette is None:
+            messagebox.showerror("Error", "No export image available. Please preview first.")
+            return
+        img.putpalette([v for rgb in palette for v in rgb] + [0]*(768-3*len(palette)))
+
+        # Cell color info: 8x8 cells, each cell has 2 color indices (foreground/background)
+        cell_colors = []
+        pixels = img.load()
+        for cell_y in range(0, 200, 8):
+            for cell_x in range(0, 320, 8):
+                # Get all pixel color indices in cell
+                cell_indices = [pixels[x, y] for y in range(cell_y, cell_y+8) for x in range(cell_x, cell_x+8)]
+                # Find two most common colors in cell
+                from collections import Counter
+                common = Counter(cell_indices).most_common(2)
+                fg = common[0][0] if len(common) > 0 else 0
+                bg = common[1][0] if len(common) > 1 else fg
+                cell_colors.append((fg, bg))
+
+        # Store cell color info: each cell 1 byte (high nibble fg, low nibble bg)
+        cell_bytes = bytearray()
+        for fg, bg in cell_colors:
+            cell_bytes.append(((fg & 0x0F) << 4) | (bg & 0x0F))
+
+        # Pixel data: 320x200, 1BPP, each bit is fg/bg for cell
+        pixel_bytes = bytearray()
+        for y in range(200):
+            for x in range(0, 320, 8):
+                byte = 0
+                for bit in range(8):
+                    cell_x = (x + bit) // 8
+                    cell_y = y // 8
+                    cell_idx = cell_y * 40 + cell_x
+                    fg, bg = cell_colors[cell_idx]
+                    color = pixels[x + bit, y]
+                    byte = (byte << 1) | (1 if color == fg else 0)
+                pixel_bytes.append(byte)
+
+        # Palette: 16 colors, 2 bytes each (Aquarius+ format)
+        palette_bytes = bytearray()
+        for rgb in palette:
+            # Convert 8-bit RGB to Aquarius+ 4:4:4 format
+            r = (rgb[0] // 17) & 0x0F
+            g = (rgb[1] // 17) & 0x0F
+            b = (rgb[2] // 17) & 0x0F
+            palette_bytes.extend([ (g << 4) | b, (0 << 4) | r ])
+
+        # Combine bitmap, cell color info, and palette (BMP1/BM1 order)
+        out_bytes = pixel_bytes + cell_bytes + palette_bytes
+
+        # Save file
+        file_path = filedialog.asksaveasfilename(defaultextension=".bmp1", filetypes=[("Aquarius+ BMP1", "*.bmp1;*.bm1")])
+        if not file_path:
+            return
+        try:
+            with open(file_path, "wb") as f:
+                f.write(out_bytes)
+        except Exception as e:
+            messagebox.showerror("Error", f"Failed to save BMP1: {e}")
 
     def export_png(self):
         # Export the processed image as PNG
@@ -408,77 +550,6 @@ class AQPStudio:
         except Exception as e:
             messagebox.showerror("Error", f"Failed to save PNG: {e}")
 
-    def export_bmp1(self):
-        # Prepare image: 320x200, 1BPP, 8x8 cells, 2 colors per cell from 16-color palette
-        img = self.image.copy()
-        img = self.scale_letterbox(img, (320, 200), Image.NEAREST)
-        if self.force_palette_var.get() and self.loaded_palette:
-            img = self.remap_to_palette(img, self.loaded_palette)
-            # Set image palette to loaded palette
-            flat_palette = []
-            for rgb in self.loaded_palette:
-                flat_palette.extend(rgb)
-            img.putpalette(flat_palette + [0]*(768-len(flat_palette)))
-            # Aquarius+ palette: 16 colors, 3 bytes each (RGB) from loaded palette
-            palette_bytes = bytearray()
-            for rgb in self.loaded_palette:
-                palette_bytes.extend(rgb)
-        else:
-            img = img.convert("P", palette=Image.ADAPTIVE, colors=16)
-            palette = img.getpalette()[:48]
-            while len(palette) < 48:
-                palette.extend([0, 0, 0])
-            palette_bytes = bytearray()
-            for i in range(16):
-                r = palette[i*3]
-                g = palette[i*3+1]
-                b = palette[i*3+2]
-                palette_bytes.extend([r, g, b])
-        # Cell color info: 8x8 cells, each cell has 2 color indices (foreground/background)
-        cell_colors = []
-        pixels = img.load()
-        for cell_y in range(0, 200, 8):
-            for cell_x in range(0, 320, 8):
-                # Get all pixel color indices in cell
-                cell_indices = [pixels[x, y] for y in range(cell_y, cell_y+8) for x in range(cell_x, cell_x+8)]
-                # Find two most common colors in cell
-                from collections import Counter
-                common = Counter(cell_indices).most_common(2)
-                fg = common[0][0] if len(common) > 0 else 0
-                bg = common[1][0] if len(common) > 1 else fg
-                cell_colors.append((fg, bg))
-        # Store cell color info: each cell 1 byte (high nibble fg, low nibble bg)
-        cell_bytes = bytearray()
-        for fg, bg in cell_colors:
-            cell_bytes.append((fg << 4) | (bg & 0x0F))
-        # Pixel data: 320x200, 1BPP, each bit is fg/bg for cell
-        pixel_bytes = bytearray()
-        cell_idx = 0
-        for cell_y in range(0, 200, 8):
-            for cell_x in range(0, 320, 8):
-                fg, bg = cell_colors[cell_idx]
-                for y in range(cell_y, cell_y+8):
-                    for x in range(cell_x, cell_x+8, 8):
-                        byte = 0
-                        for bit in range(8):
-                            color = pixels[x+bit, y]
-                            byte = (byte << 1) | (1 if color == fg else 0)
-                        pixel_bytes.append(byte)
-                cell_idx += 1
-        # Combine palette, cell color info, and pixel data
-        out_bytes = palette_bytes + cell_bytes + pixel_bytes
-        # Save file
-        file_path = filedialog.asksaveasfilename(defaultextension=".bmp1", filetypes=[("Aquarius+ BMP1", "*.bmp1;*.bm1")])
-        if not file_path:
-            return
-        try:
-            with open(file_path, "wb") as f:
-                f.write(out_bytes)
-            messagebox.showinfo("Export", f"BMP1 file saved: {os.path.basename(file_path)}")
-        except Exception as e:
-            messagebox.showerror("Error", f"Failed to save BMP1: {e}")
-        else:
-            messagebox.showerror("Error", "Unknown export type.")
 
     def export_bmp4(self):
         # Prepare image: 160x200, 16 colors, double-wide pixels
