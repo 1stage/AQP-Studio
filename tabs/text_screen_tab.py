@@ -1,7 +1,27 @@
 import tkinter as tk
+from PIL import Image, ImageTk
 from tkinter import ttk
 
 class TextScreenTab(ttk.Frame):
+    def load_aquascii_png(self, path, target_width, target_height):
+        """Load AQUASCII characters from a PNG image as 8x8 blocks, left-to-right, top-to-bottom, resized to target size."""
+        img = Image.open(path)
+        char_width, char_height = 8, 8
+        img_width, img_height = img.size
+        blocks_per_row = img_width // char_width
+        blocks_per_col = img_height // char_height
+        chars = []
+        for block_idx in range(blocks_per_row * blocks_per_col):
+            row = block_idx // blocks_per_row
+            col = block_idx % blocks_per_row
+            left = col * char_width
+            upper = row * char_height
+            right = left + char_width
+            lower = upper + char_height
+            char_img = img.crop((left, upper, right, lower))
+            char_img = char_img.resize((target_width, target_height), Image.NEAREST)
+            chars.append(ImageTk.PhotoImage(char_img))
+        return chars
     def __init__(self, parent):
         super().__init__(parent)
         # Add grid toggle variable
@@ -33,24 +53,51 @@ class TextScreenTab(ttk.Frame):
         editor_layout = tk.Frame(self, bg="#D0D0D0")
         editor_layout.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
 
-        # AQUASCII character selector (8x32 grid)
-        char_selector_frame = tk.LabelFrame(editor_layout, text="AQUASCII", bg="#D0D0D0", width=80)
-        char_selector_frame.pack(side=tk.LEFT, fill=tk.Y, padx=(0,10))
-        self.char_labels = []
-        for row in range(32):
-            row_labels = []
-            for col in range(8):
-                lbl = tk.Label(char_selector_frame, text="", width=2, height=1, bg="#E0E0E0", relief=tk.RIDGE)
-                lbl.grid(row=row, column=col, padx=1, pady=1)
-                row_labels.append(lbl)
-            self.char_labels.append(row_labels)
+        # Calculate cell size and grid params before AQUASCII panel
+        self.border_pixels = 48  # Fixed border size in actual pixels
+        self.active_width = 640  # Active screen width in pixels
+        self.active_height = 400 # Active screen height in pixels
+        self.border_chars = 3    # Border size in characters
+        self.cell_width, self.cell_height, self.cols, self.rows = self.get_grid_params()
+        self.total_cols = self.cols + 2 * self.border_chars
+        self.total_rows = self.rows + 2 * self.border_chars
+
+        # AQUASCII character selector (canvas-based) with spacing
+        self.char_spacing = 2  # Space between characters in pixels
+        self.active_char = 65  # Default to capital A (ninth row, second column)
+        aquascii_canvas_width = 8 * self.cell_width + (8 - 1) * self.char_spacing
+        aquascii_canvas_height = 32 * self.cell_height + (32 - 1) * self.char_spacing
+        self.aquascii_canvas = tk.Canvas(editor_layout, width=aquascii_canvas_width, height=aquascii_canvas_height, bg="#FFFFFF", highlightthickness=0, bd=0)
+        self.aquascii_canvas.pack(side=tk.LEFT, fill=tk.Y, padx=(0,10))
+        # Load AQUASCII character images
+        try:
+            target_width = self.cell_width
+            target_height = self.cell_height
+            images = self.load_aquascii_png("assets/aquascii.png", target_width, target_height)
+            self.aquascii_images = images  # Store as attribute to prevent GC
+        except Exception as e:
+            print("Failed to load AQUASCII PNG:", e)
+            self.aquascii_images = []
+        # Draw all character images with spacing
+        self.aquascii_canvas_images = []
+        for idx in range(32*8):
+            row = idx // 8
+            col = idx % 8
+            x = col * (self.cell_width + self.char_spacing)
+            y = row * (self.cell_height + self.char_spacing)
+            if idx < len(self.aquascii_images):
+                img_id = self.aquascii_canvas.create_image(x, y, anchor="nw", image=self.aquascii_images[idx])
+                self.aquascii_canvas_images.append(img_id)
+        # Draw red overlay for active character with spacing
+        ax = (self.active_char % 8) * (self.cell_width + self.char_spacing)
+        ay = (self.active_char // 8) * (self.cell_height + self.char_spacing)
+        self.aquascii_canvas.create_rectangle(ax, ay, ax+self.cell_width, ay+self.cell_height, outline="#FF0000", width=2)
 
         # Main screen grid (contiguous pixel field)
         screen_frame = tk.LabelFrame(editor_layout, text="Screen", bg="#D0D0D0", width=736, height=496)
-        screen_frame.pack_propagate(False)
-        screen_frame.pack(side=tk.LEFT, fill=None, expand=False, padx=0, pady=0)
+        screen_frame.pack(side=tk.LEFT, fill=tk.Y, padx=(0,10))
         self.screen_canvas = tk.Canvas(screen_frame, width=736, height=496, bg="#E0E0E0", highlightthickness=0)
-        self.screen_canvas.pack(side=tk.TOP, anchor="n", padx=0, pady=0)
+        self.screen_canvas.pack(side=tk.TOP, anchor="n", padx=16, pady=16)
         # Border size in characters
         self.border_pixels = 48  # Fixed border size in actual pixels
         self.active_width = 640  # Active screen width in pixels
@@ -63,6 +110,8 @@ class TextScreenTab(ttk.Frame):
         canvas_width = 736
         canvas_height = 496
         self.screen_canvas.config(width=canvas_width, height=canvas_height, bg="#E0E0E0")
+        # Load AQUASCII characters from PNG and display in panel, matching Screen cell size
+    # Removed legacy label-based AQUASCII panel logic. AQUASCII character images are now drawn only on the canvas above.
 
         # Draw grid with border
         self.cell_rects = []
