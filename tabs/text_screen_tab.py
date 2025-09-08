@@ -3,6 +3,30 @@ from PIL import Image, ImageTk
 from tkinter import ttk
 
 class TextScreenTab(ttk.Frame):
+    def load_aquascii_bin(self, path, target_width, target_height):
+        """Load AQUASCII characters from a BIN file as 8x8 blocks, each 8 bytes, resized to target size."""
+        import os
+        chars = []
+        try:
+            with open(path, "rb") as f:
+                data = f.read()
+            num_chars = len(data) // 8
+            for char_idx in range(num_chars):
+                char_bytes = data[char_idx*8:(char_idx+1)*8]
+                img = Image.new("RGB", (8, 8), "white")
+                pixels = img.load()
+                for y in range(8):
+                    byte = char_bytes[y]
+                    for x in range(8):
+                        if (byte >> (7-x)) & 1:
+                            pixels[x, y] = (0, 0, 0)  # Foreground (black)
+                        else:
+                            pixels[x, y] = (255, 255, 255)  # Background (white)
+                img = img.resize((target_width, target_height), Image.NEAREST)
+                chars.append(ImageTk.PhotoImage(img))
+        except Exception as e:
+            print("Failed to load AQUASCII BIN:", e)
+        return chars
     def load_aquascii_png(self, path, target_width, target_height):
         """Load AQUASCII characters from a PNG image as 8x8 blocks, left-to-right, top-to-bottom, resized to target size."""
         img = Image.open(path)
@@ -62,21 +86,26 @@ class TextScreenTab(ttk.Frame):
         self.total_cols = self.cols + 2 * self.border_chars
         self.total_rows = self.rows + 2 * self.border_chars
 
-        # AQUASCII character selector (canvas-based) with spacing
+        # AQUASCII character selector panel with label and spacing
         self.char_spacing = 2  # Space between characters in pixels
         self.active_char = 65  # Default to capital A (ninth row, second column)
         aquascii_canvas_width = 8 * self.cell_width + (8 - 1) * self.char_spacing
         aquascii_canvas_height = 32 * self.cell_height + (32 - 1) * self.char_spacing
-        self.aquascii_canvas = tk.Canvas(editor_layout, width=aquascii_canvas_width, height=aquascii_canvas_height, bg="#FFFFFF", highlightthickness=0, bd=0)
-        self.aquascii_canvas.pack(side=tk.LEFT, fill=tk.Y, padx=(0,10))
-        # Load AQUASCII character images
+        aquascii_panel_width = aquascii_canvas_width + 24  # Add extra width for label and padding
+        aquascii_panel = tk.LabelFrame(editor_layout, text="AQUASCII", bg="#D0D0D0", width=aquascii_panel_width)
+        aquascii_panel.pack(side=tk.LEFT, fill=tk.Y, padx=(0,16), ipadx=8, ipady=8)
+        self.aquascii_canvas = tk.Canvas(aquascii_panel, width=aquascii_canvas_width, height=aquascii_canvas_height, bg="#FFFFFF", highlightthickness=0, bd=0)
+        self.aquascii_canvas.pack(side=tk.TOP, fill=tk.Y, padx=8, pady=8)
+        # Load AQUASCII character images (choose PNG or BIN)
         try:
             target_width = self.cell_width
             target_height = self.cell_height
-            images = self.load_aquascii_png("assets/aquascii.png", target_width, target_height)
+            # Uncomment one of the following lines to choose source:
+            # images = self.load_aquascii_png("assets/aquascii.png", target_width, target_height)
+            images = self.load_aquascii_bin("assets/aquascii.bin", target_width, target_height)
             self.aquascii_images = images  # Store as attribute to prevent GC
         except Exception as e:
-            print("Failed to load AQUASCII PNG:", e)
+            print("Failed to load AQUASCII character set:", e)
             self.aquascii_images = []
         # Draw all character images with spacing
         self.aquascii_canvas_images = []
