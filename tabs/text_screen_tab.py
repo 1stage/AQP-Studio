@@ -46,33 +46,61 @@ class TextScreenTab(ttk.Frame):
             self.char_labels.append(row_labels)
 
         # Main screen grid (contiguous pixel field)
-        screen_frame = tk.LabelFrame(editor_layout, text="Screen", bg="#D0D0D0")
-        screen_frame.pack(side=tk.LEFT, fill=tk.BOTH, expand=True, padx=(0,10))
-        self.screen_canvas = tk.Canvas(screen_frame, width=320, height=200, bg="#FFFFFF", highlightthickness=0)
-        self.screen_canvas.pack(expand=True, fill=tk.BOTH)
+        screen_frame = tk.LabelFrame(editor_layout, text="Screen", bg="#D0D0D0", width=736, height=496)
+        screen_frame.pack_propagate(False)
+        screen_frame.pack(side=tk.LEFT, fill=None, expand=False, padx=0, pady=0)
+        self.screen_canvas = tk.Canvas(screen_frame, width=736, height=496, bg="#E0E0E0", highlightthickness=0)
+        self.screen_canvas.pack(side=tk.TOP, anchor="n", padx=0, pady=0)
         # Border size in characters
         self.border_pixels = 48  # Fixed border size in actual pixels
+        self.active_width = 640  # Active screen width in pixels
+        self.active_height = 400 # Active screen height in pixels
+        self.border_chars = 3    # Border size in characters
         # Set pixel size and grid size based on column mode
         self.cell_width, self.cell_height, self.cols, self.rows = self.get_grid_params()
-        # Total grid size (active area)
-        self.total_cols = self.cols
-        self.total_rows = self.rows
-        canvas_width = self.total_cols * self.cell_width + 2 * self.border_pixels
-        canvas_height = self.total_rows * self.cell_height + 2 * self.border_pixels
-        self.screen_canvas.config(width=canvas_width, height=canvas_height)
+        self.total_cols = self.cols + 2 * self.border_chars
+        self.total_rows = self.rows + 2 * self.border_chars
+        canvas_width = 736
+        canvas_height = 496
+        self.screen_canvas.config(width=canvas_width, height=canvas_height, bg="#E0E0E0")
 
         # Draw grid with border
         self.cell_rects = []
         for row in range(self.total_rows):
             row_rects = []
             for col in range(self.total_cols):
-                x0 = self.border_pixels + col * self.cell_width
-                y0 = self.border_pixels + row * self.cell_height
+                # Offset by border_pixels so border is visible
+                x0 = col * self.cell_width
+                y0 = row * self.cell_height
                 x1 = x0 + self.cell_width
                 y1 = y0 + self.cell_height
-                # Border cells: fill with different color for now
-                fill = "#F8F8F8"
-                rect = self.screen_canvas.create_rectangle(x0, y0, x1, y1, outline="", fill=fill)
+                # Clamp right/bottom edge to canvas size
+                if col == self.total_cols - 1:
+                    x1 = canvas_width
+                if row == self.total_rows - 1:
+                    y1 = canvas_height
+                # Fill border and active area with cyan BG and black FG
+                if (row < self.border_chars or row >= self.total_rows - self.border_chars or
+                    col < self.border_chars or col >= self.total_cols - self.border_chars):
+                    # Border cell
+                    rect = self.screen_canvas.create_rectangle(x0, y0, x1, y1, outline="", fill="#00FFFF")
+                    fg_margin_x = self.cell_width // 4
+                    fg_margin_y = self.cell_height // 4
+                    fg_x0 = x0 + fg_margin_x
+                    fg_y0 = y0 + fg_margin_y
+                    fg_x1 = x1 - fg_margin_x
+                    fg_y1 = y1 - fg_margin_y
+                    self.screen_canvas.create_rectangle(fg_x0, fg_y0, fg_x1, fg_y1, outline="", fill="#000000")
+                else:
+                    # Active cell
+                    rect = self.screen_canvas.create_rectangle(x0, y0, x1, y1, outline="", fill="#00FFFF")
+                    fg_margin_x = self.cell_width // 4
+                    fg_margin_y = self.cell_height // 4
+                    fg_x0 = x0 + fg_margin_x
+                    fg_y0 = y0 + fg_margin_y
+                    fg_x1 = x1 - fg_margin_x
+                    fg_y1 = y1 - fg_margin_y
+                    self.screen_canvas.create_rectangle(fg_x0, fg_y0, fg_x1, fg_y1, outline="", fill="#000000")
                 row_rects.append(rect)
             self.cell_rects.append(row_rects)
 
@@ -113,22 +141,27 @@ class TextScreenTab(ttk.Frame):
     def update_screen_grid(self):
         self.screen_canvas.delete("gridline")
         if self.show_grid_var.get():
-            # Draw vertical grid lines
-            for col in range(self.total_cols + 1):
-                x = self.border_pixels + col * self.cell_width
-                self.screen_canvas.create_line(x, self.border_pixels, x, self.border_pixels + self.total_rows * self.cell_height, fill="#A0A0A0", tags="gridline")
-            # Draw horizontal grid lines
-            for row in range(self.total_rows + 1):
-                y = self.border_pixels + row * self.cell_height
-                self.screen_canvas.create_line(self.border_pixels, y, self.border_pixels + self.total_cols * self.cell_width, y, fill="#A0A0A0", tags="gridline")
+            # Only grid the active area, not the border
+            start_col = self.border_chars
+            end_col = self.total_cols - self.border_chars
+            start_row = self.border_chars
+            end_row = self.total_rows - self.border_chars
+            # Draw vertical grid lines for active area
+            for col in range(start_col, end_col + 1):
+                x = col * self.cell_width
+                self.screen_canvas.create_line(x, start_row * self.cell_height, x, end_row * self.cell_height, fill="#A0A0A0", tags="gridline")
+            # Draw horizontal grid lines for active area
+            for row in range(start_row, end_row + 1):
+                y = row * self.cell_height
+                self.screen_canvas.create_line(start_col * self.cell_width, y, end_col * self.cell_width, y, fill="#A0A0A0", tags="gridline")
 
     def on_col_mode_change(self, *args):
         # Redraw grid with new pixel size and dimensions
         self.cell_width, self.cell_height, self.cols, self.rows = self.get_grid_params()
-        self.total_cols = self.cols
-        self.total_rows = self.rows
-        canvas_width = self.total_cols * self.cell_width + 2 * self.border_pixels
-        canvas_height = self.total_rows * self.cell_height + 2 * self.border_pixels
+        self.total_cols = self.cols + 2 * self.border_chars
+        self.total_rows = self.rows + 2 * self.border_chars
+        canvas_width = self.border_pixels * 2 + self.cols * self.cell_width  # 736
+        canvas_height = self.border_pixels * 2 + self.rows * self.cell_height  # 496
         self.screen_canvas.config(width=canvas_width, height=canvas_height)
         # Remove all rectangles and redraw
         self.screen_canvas.delete("all")
@@ -136,12 +169,37 @@ class TextScreenTab(ttk.Frame):
         for row in range(self.total_rows):
             row_rects = []
             for col in range(self.total_cols):
-                x0 = self.border_pixels + col * self.cell_width
-                y0 = self.border_pixels + row * self.cell_height
+                x0 = col * self.cell_width
+                y0 = row * self.cell_height
                 x1 = x0 + self.cell_width
                 y1 = y0 + self.cell_height
-                fill = "#F8F8F8"
-                rect = self.screen_canvas.create_rectangle(x0, y0, x1, y1, outline="", fill=fill)
+                # Clamp right/bottom edge to canvas size
+                if col == self.total_cols - 1:
+                    x1 = canvas_width
+                if row == self.total_rows - 1:
+                    y1 = canvas_height
+                # Fill border and active area with cyan BG and black FG
+                if (row < self.border_chars or row >= self.total_rows - self.border_chars or
+                    col < self.border_chars or col >= self.total_cols - self.border_chars):
+                    # Border cell
+                    rect = self.screen_canvas.create_rectangle(x0, y0, x1, y1, outline="", fill="#00FFFF")
+                    fg_margin_x = self.cell_width // 4
+                    fg_margin_y = self.cell_height // 4
+                    fg_x0 = x0 + fg_margin_x
+                    fg_y0 = y0 + fg_margin_y
+                    fg_x1 = x1 - fg_margin_x
+                    fg_y1 = y1 - fg_margin_y
+                    self.screen_canvas.create_rectangle(fg_x0, fg_y0, fg_x1, fg_y1, outline="", fill="#000000")
+                else:
+                    # Active cell
+                    rect = self.screen_canvas.create_rectangle(x0, y0, x1, y1, outline="", fill="#00FFFF")
+                    fg_margin_x = self.cell_width // 4
+                    fg_margin_y = self.cell_height // 4
+                    fg_x0 = x0 + fg_margin_x
+                    fg_y0 = y0 + fg_margin_y
+                    fg_x1 = x1 - fg_margin_x
+                    fg_y1 = y1 - fg_margin_y
+                    self.screen_canvas.create_rectangle(fg_x0, fg_y0, fg_x1, fg_y1, outline="", fill="#000000")
                 row_rects.append(rect)
             self.cell_rects.append(row_rects)
         self.update_screen_grid()
