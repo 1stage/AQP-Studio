@@ -91,12 +91,13 @@ class AQPStudio:
     # Duplicate __init__ removed
 
     def setup_gui(self):
+        # Setup GUI for main window and tabs
         from tkinter import ttk
         style = ttk.Style()
         style.theme_use("clam")
         style.configure("TNotebook", background="#808080", borderwidth=0)
         style.configure("TNotebook.Tab", background="#A0A0A0", font=("Arial", 10, "bold"))
-        style.map("TNotebook.Tab", background=[("selected", "#D0D0D0")])  # Matches frame background for selected tab
+        style.map("TNotebook.Tab", background=[("selected", "#D0D0D0")])
 
         notebook = ttk.Notebook(self.root)
         notebook.pack(fill=tk.BOTH, expand=True, padx=4, pady=4)
@@ -105,10 +106,10 @@ class AQPStudio:
         bmp4_frame = tk.Frame(notebook, bg="#D0D0D0")
         notebook.add(bmp4_frame, text="AQ+ Images")
 
-        # BMP1 tab (blank)
-        # bmp1_frame = tk.Frame(notebook, bg="#D0D0D0")
-        # notebook.add(bmp1_frame, text="BMP1 Images")
-        # tk.Label(bmp1_frame, text="BMP1 tools coming soon...", bg="#D0D0D0", font=("Arial", 14)).pack(pady=40)
+        # Text Screens tab (now using TextScreenTab class)
+        from tabs.text_screen_tab import TextScreenTab
+        text_screen_tab = TextScreenTab(notebook)
+        notebook.add(text_screen_tab, text="Text Screens")
 
         # All previous widget creation now goes inside bmp4_frame
         preview_frame = tk.Frame(bmp4_frame, bg="#D0D0D0")
@@ -655,7 +656,7 @@ if __name__ == "__main__":
     root = tk.Tk()
     # Set custom window/taskbar icon
     try:
-        root.iconbitmap(resource_path("win-icon.ico"))
+        root.iconbitmap(resource_path("assets/win-icon.ico"))
     except Exception as e:
         print(f"Could not set window icon: {e}")
     app = AQPStudio(root)
