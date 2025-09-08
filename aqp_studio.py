@@ -103,12 +103,12 @@ class AQPStudio:
 
         # BMP4 tab
         bmp4_frame = tk.Frame(notebook, bg="#D0D0D0")
-        notebook.add(bmp4_frame, text="BMP4 Images")
+        notebook.add(bmp4_frame, text="Aq+ Images")
 
         # BMP1 tab (blank)
-        bmp1_frame = tk.Frame(notebook, bg="#D0D0D0")
-        notebook.add(bmp1_frame, text="BMP1 Images")
-        tk.Label(bmp1_frame, text="BMP1 tools coming soon...", bg="#D0D0D0", font=("Arial", 14)).pack(pady=40)
+        # bmp1_frame = tk.Frame(notebook, bg="#D0D0D0")
+        # notebook.add(bmp1_frame, text="BMP1 Images")
+        # tk.Label(bmp1_frame, text="BMP1 tools coming soon...", bg="#D0D0D0", font=("Arial", 14)).pack(pady=40)
 
         # All previous widget creation now goes inside bmp4_frame
         preview_frame = tk.Frame(bmp4_frame, bg="#D0D0D0")
