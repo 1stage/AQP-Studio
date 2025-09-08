@@ -103,7 +103,7 @@ class AQPStudio:
 
         # BMP4 tab
         bmp4_frame = tk.Frame(notebook, bg="#D0D0D0")
-        notebook.add(bmp4_frame, text="Aq+ Images")
+        notebook.add(bmp4_frame, text="AQ+ Images")
 
         # BMP1 tab (blank)
         # bmp1_frame = tk.Frame(notebook, bg="#D0D0D0")
