@@ -56,23 +56,12 @@ class TextScreenTab(ttk.Frame):
         style.configure("TNotebook.Tab", background="#A0A0A0", font=("Arial", 10, "bold"))
         style.map("TNotebook.Tab", background=[("selected", "#D0D0D0")])
 
-        # Top controls: mode toggles
-        mode_frame = tk.Frame(self, bg="#D0D0D0")
-        mode_frame.pack(fill=tk.X, pady=(10,4))
+        # Main Frame
+        main_frame = tk.Frame(self, bg="#D0D0D0")
+        main_frame.pack(fill=tk.X, pady=(10,4))
+
+        # Columns mode variable
         self.col_mode_var = tk.StringVar(value="40")
-        tk.Label(mode_frame, text="Screen Mode:", bg="#D0D0D0", font=("Arial", 10)).pack(side=tk.LEFT, padx=(10,2))
-        tk.Radiobutton(mode_frame, text="40 Col", variable=self.col_mode_var, value="40", bg="#D0D0D0").pack(side=tk.LEFT)
-        tk.Radiobutton(mode_frame, text="80 Col", variable=self.col_mode_var, value="80", bg="#D0D0D0").pack(side=tk.LEFT)
-        self.col_mode_var.trace_add("write", self.on_col_mode_change)
-        # Paint mode toggles
-        self.paint_char_var = tk.BooleanVar(value=True)
-        self.paint_fg_var = tk.BooleanVar(value=True)
-        self.paint_bg_var = tk.BooleanVar(value=True)
-        tk.Label(mode_frame, text="Paint:", bg="#D0D0D0", font=("Arial", 10)).pack(side=tk.LEFT, padx=(20,2))
-        tk.Checkbutton(mode_frame, text="Char", variable=self.paint_char_var, bg="#D0D0D0").pack(side=tk.LEFT)
-        tk.Checkbutton(mode_frame, text="FG", variable=self.paint_fg_var, bg="#D0D0D0").pack(side=tk.LEFT)
-        tk.Checkbutton(mode_frame, text="BG", variable=self.paint_bg_var, bg="#D0D0D0").pack(side=tk.LEFT)
-        tk.Checkbutton(mode_frame, text="Show Grid", variable=self.show_grid_var, bg="#D0D0D0", command=self.update_screen_grid).pack(side=tk.LEFT, padx=(20,2))
 
         # Main layout: left = AQUASCII selector, center = screen grid, right = palette selector
         editor_layout = tk.Frame(self, bg="#D0D0D0")
@@ -98,36 +87,55 @@ class TextScreenTab(ttk.Frame):
         self.aquascii_canvas.pack(side=tk.TOP, fill=tk.Y, padx=8, pady=8)
         self.aquascii_canvas.bind("<Button-1>", self.on_aquascii_click)
 
-        # Palette selector (16x2 grid placeholder)
+        # Palette selector (8x4 grid placeholder)
         palette_frame = tk.LabelFrame(editor_layout, text="Palette", bg="#D0D0D0", width=80)
         palette_frame.pack(side=tk.LEFT, fill=tk.Y, padx=(0,10))
         self.palette_labels = []
-        for row in range(2):
+        for row in range(8):
             row_labels = []
-            for col in range(16):
-                lbl = tk.Label(palette_frame, text="", width=2, height=1, bg="#C0C0C0", relief=tk.RIDGE)
+            for col in range(4):
+                lbl = tk.Label(palette_frame, text="", width=4, height=1, bg="#C0C0C0", relief=tk.RIDGE)
                 lbl.grid(row=row, column=col, padx=1, pady=1)
                 row_labels.append(lbl)
             self.palette_labels.append(row_labels)
 
-            # Load AQUASCII character images (choose PNG or BIN)
-            self.aquascii_images = []
-            try:
-                # For screen grid, use cell_width/cell_height
-                target_width = self.cell_width
-                target_height = self.cell_height
-                # For 80-col mode, use 8x16; for 40-col, use 16x16
-                if self.cols == 80:
-                    target_width = 8
-                    target_height = 16
-                else:
-                    target_width = 16
-                    target_height = 16
-                # images = self.load_aquascii_png("assets/aquascii.png", target_width, target_height)
-                images = self.load_aquascii_bin("assets/aquascii.bin", target_width, target_height)
-                self.aquascii_images = images  # Store as attribute to prevent GC
-            except Exception as err:
-                print("Failed to load AQUASCII character set:", err)
+        # Controls: mode toggles
+        mode_frame = tk.LabelFrame(editor_layout, text="Controls", bg="#D0D0D0")
+        mode_frame.pack(side=tk.LEFT, pady=(10,4))
+        tk.Label(mode_frame, text="Screen Mode:", bg="#D0D0D0", font=("Arial", 10)).pack(side=tk.LEFT, padx=10)
+        tk.Radiobutton(mode_frame, text="40 Col", variable=self.col_mode_var, value="40", bg="#D0D0D0").pack(side=tk.LEFT)
+        tk.Radiobutton(mode_frame, text="80 Col", variable=self.col_mode_var, value="80", bg="#D0D0D0").pack(side=tk.LEFT)
+        self.col_mode_var.trace_add("write", self.on_col_mode_change)
+
+        # Paint mode toggles
+        self.paint_char_var = tk.BooleanVar(value=True)
+        self.paint_fg_var = tk.BooleanVar(value=True)
+        self.paint_bg_var = tk.BooleanVar(value=True)
+        tk.Label(mode_frame, text="Paint:", bg="#D0D0D0", font=("Arial", 10)).pack(side=tk.LEFT, padx=(20,2))
+        tk.Checkbutton(mode_frame, text="Char", variable=self.paint_char_var, bg="#D0D0D0").pack(side=tk.LEFT)
+        tk.Checkbutton(mode_frame, text="FG", variable=self.paint_fg_var, bg="#D0D0D0").pack(side=tk.LEFT)
+        tk.Checkbutton(mode_frame, text="BG", variable=self.paint_bg_var, bg="#D0D0D0").pack(side=tk.LEFT)
+        tk.Checkbutton(mode_frame, text="Show Grid", variable=self.show_grid_var, bg="#D0D0D0", command=self.update_screen_grid).pack(side=tk.LEFT, padx=(20,2))
+
+        # Load AQUASCII character images (choose PNG or BIN)
+        self.aquascii_images = []
+        try:
+            # For screen grid, use cell_width/cell_height
+            target_width = self.cell_width
+            target_height = self.cell_height
+            # For 80-col mode, use 8x16; for 40-col, use 16x16
+            if self.cols == 80:
+                target_width = 8
+                target_height = 16
+            else:
+                target_width = 16
+                target_height = 16
+            # images = self.load_aquascii_png("assets/aquascii.png", target_width, target_height)
+            images = self.load_aquascii_bin("assets/aquascii.bin", target_width, target_height)
+            self.aquascii_images = images  # Store as attribute to prevent GC
+        except Exception as err:
+            print("Failed to load AQUASCII character set:", err)
+
         # Load AQUASCII character images for selector panel (always 16x16)
         self.aquascii_images_selector = []
         try:
@@ -158,6 +166,7 @@ class TextScreenTab(ttk.Frame):
             self.aquascii_images_grid = images_grid
         except Exception as err:
             print("Failed to load AQUASCII character set for grid:", err)
+
         # Main screen grid (contiguous pixel field)
         self.screen_frame = tk.LabelFrame(editor_layout, text="Screen", bg="#D0D0D0", width=736, height=496)
         self.screen_frame.pack(side=tk.LEFT, fill=tk.Y, padx=(0,10))
