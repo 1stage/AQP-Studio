@@ -57,8 +57,8 @@ class TextScreenTab(ttk.Frame):
         style.map("TNotebook.Tab", background=[("selected", "#D0D0D0")])
 
         # Main Frame
-        main_frame = tk.Frame(self, bg="#D0D0D0")
-        main_frame.pack(fill=tk.X, pady=(10,4))
+        self.main_frame = tk.Frame(self, bg="#D0D0D0")
+        self.main_frame.pack(fill=tk.X, pady=(10,4))
 
         # Columns mode variable
         self.col_mode_var = tk.StringVar(value="40")
@@ -87,9 +87,13 @@ class TextScreenTab(ttk.Frame):
         self.aquascii_canvas.pack(side=tk.TOP, fill=tk.Y, padx=8, pady=8)
         self.aquascii_canvas.bind("<Button-1>", self.on_aquascii_click)
 
+        # Palette and Controls stacked vertically in a container frame
+        palette_and_controls_frame = tk.Frame(editor_layout, bg="#D0D0D0")
+        palette_and_controls_frame.pack(side=tk.LEFT, anchor="n", pady=(0,10))
+
         # Palette selector (8x4 grid placeholder)
-        palette_frame = tk.LabelFrame(editor_layout, text="Palette", bg="#D0D0D0", width=80)
-        palette_frame.pack(side=tk.LEFT, fill=tk.Y, padx=(0,10))
+        palette_frame = tk.LabelFrame(palette_and_controls_frame, text="Palette", bg="#D0D0D0", width=80)
+        palette_frame.pack(side=tk.TOP, anchor="n")
         self.palette_labels = []
         for row in range(8):
             row_labels = []
@@ -100,22 +104,30 @@ class TextScreenTab(ttk.Frame):
             self.palette_labels.append(row_labels)
 
         # Controls: mode toggles
-        mode_frame = tk.LabelFrame(editor_layout, text="Controls", bg="#D0D0D0")
-        mode_frame.pack(side=tk.LEFT, pady=(10,4))
-        tk.Label(mode_frame, text="Screen Mode:", bg="#D0D0D0", font=("Arial", 10)).pack(side=tk.LEFT, padx=10)
-        tk.Radiobutton(mode_frame, text="40 Col", variable=self.col_mode_var, value="40", bg="#D0D0D0").pack(side=tk.LEFT)
-        tk.Radiobutton(mode_frame, text="80 Col", variable=self.col_mode_var, value="80", bg="#D0D0D0").pack(side=tk.LEFT)
+        mode_frame = tk.LabelFrame(palette_and_controls_frame, text="Controls", bg="#D0D0D0")
+        mode_frame.pack(side=tk.TOP, fill=tk.X, pady=(10,4))
+
+        # Screen Mode sub-section
+        screen_mode_section = tk.LabelFrame(mode_frame, text="Screen Mode", bg="#D0D0D0")
+        screen_mode_section.pack(side=tk.TOP, fill=tk.X, padx=8, pady=(8,4))
+        tk.Radiobutton(screen_mode_section, text="40 Col", variable=self.col_mode_var, value="40", bg="#D0D0D0").pack(side=tk.LEFT, padx=4, pady=2)
+        tk.Radiobutton(screen_mode_section, text="80 Col", variable=self.col_mode_var, value="80", bg="#D0D0D0").pack(side=tk.LEFT, padx=4, pady=2)
         self.col_mode_var.trace_add("write", self.on_col_mode_change)
 
-        # Paint mode toggles
+        # Paint sub-section
         self.paint_char_var = tk.BooleanVar(value=True)
         self.paint_fg_var = tk.BooleanVar(value=True)
         self.paint_bg_var = tk.BooleanVar(value=True)
-        tk.Label(mode_frame, text="Paint:", bg="#D0D0D0", font=("Arial", 10)).pack(side=tk.LEFT, padx=(20,2))
-        tk.Checkbutton(mode_frame, text="Char", variable=self.paint_char_var, bg="#D0D0D0").pack(side=tk.LEFT)
-        tk.Checkbutton(mode_frame, text="FG", variable=self.paint_fg_var, bg="#D0D0D0").pack(side=tk.LEFT)
-        tk.Checkbutton(mode_frame, text="BG", variable=self.paint_bg_var, bg="#D0D0D0").pack(side=tk.LEFT)
-        tk.Checkbutton(mode_frame, text="Show Grid", variable=self.show_grid_var, bg="#D0D0D0", command=self.update_screen_grid).pack(side=tk.LEFT, padx=(20,2))
+        paint_section = tk.LabelFrame(mode_frame, text="Paint", bg="#D0D0D0")
+        paint_section.pack(side=tk.TOP, fill=tk.X, padx=8, pady=(4,4))
+        tk.Checkbutton(paint_section, text="Char", variable=self.paint_char_var, bg="#D0D0D0").pack(side=tk.LEFT, padx=4, pady=2)
+        tk.Checkbutton(paint_section, text="FG", variable=self.paint_fg_var, bg="#D0D0D0").pack(side=tk.LEFT, padx=4, pady=2)
+        tk.Checkbutton(paint_section, text="BG", variable=self.paint_bg_var, bg="#D0D0D0").pack(side=tk.LEFT, padx=4, pady=2)
+
+        # Show Grid sub-section
+        show_grid_section = tk.LabelFrame(mode_frame, text="Grid", bg="#D0D0D0")
+        show_grid_section.pack(side=tk.TOP, fill=tk.X, padx=8, pady=(4,8))
+        tk.Checkbutton(show_grid_section, text="Show Grid", variable=self.show_grid_var, bg="#D0D0D0", command=self.update_screen_grid).pack(side=tk.LEFT, padx=4, pady=2)
 
         # Load AQUASCII character images (choose PNG or BIN)
         self.aquascii_images = []
