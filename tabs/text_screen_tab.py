@@ -146,6 +146,7 @@ class TextScreenTab(ttk.Frame):
         self.screen_buffer = [[32 for _ in range(self.total_cols)] for _ in range(self.total_rows)]
         # Bind events and register callbacks after creating screen_canvas and screen_buffer
         self.screen_canvas.bind("<Button-1>", self.on_screen_click)
+        self.screen_canvas.bind("<B1-Motion>", self.on_screen_drag)
         # Ensure grid is visible at launch
         self.update_screen_grid()
         self.col_mode_var.trace_add("write", self.on_col_mode_change)
@@ -160,48 +161,48 @@ class TextScreenTab(ttk.Frame):
                     y = row * self.cell_height
                     self.screen_canvas.create_image(x, y, anchor="nw", image=self.aquascii_images[char_code], tags="charimg")
 
-    def on_screen_click(self, event):
-        # Convert pixel to grid cell
+
+    def handle_screen_draw(self, event):
         col = event.x // self.cell_width
         row = event.y // self.cell_height
-        # Define active area bounds
         active_start_col = self.border_chars
         active_end_col = self.total_cols - self.border_chars
         active_start_row = self.border_chars
         active_end_row = self.total_rows - self.border_chars
 
-        # Click in border area
+        # Border logic
         if (row < self.border_chars or row >= self.total_rows - self.border_chars or
             col < self.border_chars or col >= self.total_cols - self.border_chars):
-            # Set all border cells to active character
             for r in range(self.total_rows):
                 for c in range(self.total_cols):
                     if (r < self.border_chars or r >= self.total_rows - self.border_chars or
                         c < self.border_chars or c >= self.total_cols - self.border_chars):
                         self.screen_buffer[r][c] = self.active_char
-            # Also set (0,0) cell of active area
             self.screen_buffer[self.border_chars][self.border_chars] = self.active_char
             self.update_screen_grid()
             return
 
-        # Click in first cell of active area (upper left)
+        # First cell of active area
         if row == active_start_row and col == active_start_col:
-            # Set all border cells to active character
             for r in range(self.total_rows):
                 for c in range(self.total_cols):
                     if (r < self.border_chars or r >= self.total_rows - self.border_chars or
                         c < self.border_chars or c >= self.total_cols - self.border_chars):
                         self.screen_buffer[r][c] = self.active_char
-            # Also set (0,0) cell of active area
             self.screen_buffer[self.border_chars][self.border_chars] = self.active_char
             self.update_screen_grid()
             return
 
-        # Click in other active area cell
+        # Other active area cell
         if (active_start_col <= col < active_end_col and active_start_row <= row < active_end_row):
-            # Draw active character in clicked cell
             self.screen_buffer[row][col] = self.active_char
             self.update_screen_grid()
+
+    def on_screen_click(self, event):
+        self.handle_screen_draw(event)
+
+    def on_screen_drag(self, event):
+        self.handle_screen_draw(event)
 
 
     def get_grid_params(self):
