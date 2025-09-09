@@ -96,22 +96,52 @@ class TextScreenTab(ttk.Frame):
         palette_frame.pack(side=tk.TOP, anchor="n")
         self.palette_labels = []
 
+        # Aquarius 16-color palette (3-nybble RGB values)
+        aquarius_palette = [
+            (0x11, 0x11, 0x11),   # idx 0, BLK
+            (0xFF, 0x11, 0x11),   # idx 1, RED
+            (0x11, 0xFF, 0x11),   # idx 2, GRN
+            (0xFF, 0xFF, 0x11),   # idx 3, YEL
+            (0x22, 0x22, 0xEE),   # idx 4, BLU
+            (0xFF, 0x11, 0xFF),   # idx 5, MAG
+            (0x33, 0xCC, 0xCC),   # idx 6, CYN
+            (0xFF, 0xFF, 0xFF),   # idx 7, WHT
+            (0xCC, 0xCC, 0xCC),   # idx 8, LTGRY
+            (0x33, 0xBB, 0xBB),   # idx 9, DKCYN
+            (0xCC, 0x22, 0xCC),   # idx 10, DKMAG
+            (0x44, 0x11, 0x99),   # idx 11, DKBLU
+            (0xFF, 0xFF, 0x77),   # idx 12, LTYEL
+            (0x22, 0xDD, 0x44),   # idx 13, DKGRN
+            (0xBB, 0x22, 0x22),   # idx 14, DKRED
+            (0x33, 0x33, 0x33),   # idx 15, DKGRY
+        ]
+
         fg_frame = tk.LabelFrame(palette_frame, text="FG", bg="#D0D0D0")
-        fg_frame.grid(row=0, column=0, padx=2, pady=(2,2))
+        fg_frame.grid(row=0, column=0, padx=2, pady=(2,8))
         for row in range(4):
             row_labels = []
             for col in range(4):
-                lbl = tk.Label(fg_frame, text="", width=4, height=1, bg="#C0C0C0", relief=tk.RIDGE)
+                idx = row * 4 + col
+                rgb = aquarius_palette[idx]
+                color = f'#{rgb[0]:02X}{rgb[1]:02X}{rgb[2]:02X}'
+                border_color = "#FF0000" if idx == 0 else "#000000"
+                border_width = 4 if idx == 0 else 1
+                lbl = tk.Label(fg_frame, text="", width=4, height=1, bg=color, highlightbackground=border_color, highlightcolor=border_color, highlightthickness=border_width, bd=0, borderwidth=0)
                 lbl.grid(row=row, column=col, padx=1, pady=1)
                 row_labels.append(lbl)
             self.palette_labels.append(row_labels)
 
         bg_frame = tk.LabelFrame(palette_frame, text="BG", bg="#D0D0D0")
-        bg_frame.grid(row=1, column=0, padx=2, pady=(2,2))
+        bg_frame.grid(row=1, column=0, padx=2, pady=(8,2))
         for row in range(4):
             row_labels = []
             for col in range(4):
-                lbl = tk.Label(bg_frame, text="", width=4, height=1, bg="#C0C0C0", relief=tk.RIDGE)
+                idx = row * 4 + col
+                rgb = aquarius_palette[idx]
+                color = f'#{rgb[0]:02X}{rgb[1]:02X}{rgb[2]:02X}'
+                border_color = "#FF0000" if idx == 7 else "#000000"
+                border_width = 4 if idx == 7 else 1
+                lbl = tk.Label(bg_frame, text="", width=4, height=1, bg=color, highlightbackground=border_color, highlightcolor=border_color, highlightthickness=border_width, bd=0, borderwidth=0)
                 lbl.grid(row=row, column=col, padx=1, pady=1)
                 row_labels.append(lbl)
             self.palette_labels.append(row_labels)
