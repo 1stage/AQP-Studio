@@ -88,12 +88,12 @@ class TextScreenTab(ttk.Frame):
         self.aquascii_canvas.bind("<Button-1>", self.on_aquascii_click)
 
         # Palette and Controls stacked vertically in a container frame
-        palette_and_controls_frame = tk.Frame(editor_layout, bg="#D0D0D0")
-        palette_and_controls_frame.pack(side=tk.LEFT, anchor="n", pady=(0,10))
+        palette_and_controls_frame = tk.Frame(editor_layout, bg="#D0D0D0", width=260)
+        palette_and_controls_frame.pack(side=tk.LEFT, fill=tk.Y, padx=0, pady=0)
 
         # Palette selector with FG and BG sub-sections
-        palette_frame = tk.LabelFrame(palette_and_controls_frame, text="Palette", bg="#D0D0D0", width=80)
-        palette_frame.pack(side=tk.TOP, anchor="n")
+        palette_frame = tk.LabelFrame(palette_and_controls_frame, text="Palette", bg="#D0D0D0")
+        palette_frame.pack(side=tk.TOP, fill=tk.X, padx=8, pady=0)
         self.palette_labels = []
 
         # Aquarius 16-color palette (3-nybble RGB values)
@@ -117,38 +117,41 @@ class TextScreenTab(ttk.Frame):
         ]
 
         fg_frame = tk.LabelFrame(palette_frame, text="FG", bg="#D0D0D0")
-        fg_frame.grid(row=0, column=0, padx=2, pady=(2,8))
+        fg_frame.grid(row=0, column=0, padx=2, pady=(2,8), sticky="ew")
+        palette_frame.grid_columnconfigure(0, weight=1)
+        for col in range(4):
+            fg_frame.grid_columnconfigure(col, weight=1)
         for row in range(4):
             row_labels = []
             for col in range(4):
                 idx = row * 4 + col
                 rgb = aquarius_palette[idx]
                 color = f'#{rgb[0]:02X}{rgb[1]:02X}{rgb[2]:02X}'
-                border_color = "#FF0000" if idx == 0 else "#000000"
-                border_width = 4 if idx == 0 else 1
-                lbl = tk.Label(fg_frame, text="", width=4, height=1, bg=color, highlightbackground=border_color, highlightcolor=border_color, highlightthickness=border_width, bd=0, borderwidth=0)
-                lbl.grid(row=row, column=col, padx=1, pady=1)
+                border_color = "#FF0000" if idx == 0 else "#D0D0D0"
+                lbl = tk.Label(fg_frame, text="", width=4, height=1, bg=color, highlightbackground=border_color, highlightcolor=border_color, highlightthickness=4, bd=0, borderwidth=0)
+                lbl.grid(row=row, column=col, padx=8, pady=1, sticky="ew")
                 row_labels.append(lbl)
             self.palette_labels.append(row_labels)
 
         bg_frame = tk.LabelFrame(palette_frame, text="BG", bg="#D0D0D0")
-        bg_frame.grid(row=1, column=0, padx=2, pady=(8,2))
+        bg_frame.grid(row=1, column=0, padx=2, pady=(8,2), sticky="ew")
+        for col in range(4):
+            bg_frame.grid_columnconfigure(col, weight=1)
         for row in range(4):
             row_labels = []
             for col in range(4):
                 idx = row * 4 + col
                 rgb = aquarius_palette[idx]
                 color = f'#{rgb[0]:02X}{rgb[1]:02X}{rgb[2]:02X}'
-                border_color = "#FF0000" if idx == 7 else "#000000"
-                border_width = 4 if idx == 7 else 1
-                lbl = tk.Label(bg_frame, text="", width=4, height=1, bg=color, highlightbackground=border_color, highlightcolor=border_color, highlightthickness=border_width, bd=0, borderwidth=0)
-                lbl.grid(row=row, column=col, padx=1, pady=1)
+                border_color = "#FF0000" if idx == 7 else "#D0D0D0"
+                lbl = tk.Label(bg_frame, text="", width=4, height=1, bg=color, highlightbackground=border_color, highlightcolor=border_color, highlightthickness=4, bd=0, borderwidth=0)
+                lbl.grid(row=row, column=col, padx=8, pady=1, sticky="ew")
                 row_labels.append(lbl)
             self.palette_labels.append(row_labels)
 
         # Controls: mode toggles
         mode_frame = tk.LabelFrame(palette_and_controls_frame, text="Controls", bg="#D0D0D0")
-        mode_frame.pack(side=tk.TOP, fill=tk.X, pady=(10,4))
+        mode_frame.pack(side=tk.TOP, fill=tk.X, padx=8, pady=(10,4))
 
         # Screen Mode sub-section
         screen_mode_section = tk.LabelFrame(mode_frame, text="Screen Mode", bg="#D0D0D0")
