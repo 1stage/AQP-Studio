@@ -146,6 +146,8 @@ class TextScreenTab(ttk.Frame):
         self.screen_buffer = [[32 for _ in range(self.total_cols)] for _ in range(self.total_rows)]
         # Bind events and register callbacks after creating screen_canvas and screen_buffer
         self.screen_canvas.bind("<Button-1>", self.on_screen_click)
+        # Ensure grid is visible at launch
+        self.update_screen_grid()
         self.col_mode_var.trace_add("write", self.on_col_mode_change)
     def draw_screen_grid(self):
         # Draw AQUASCII characters in each cell according to self.screen_buffer
