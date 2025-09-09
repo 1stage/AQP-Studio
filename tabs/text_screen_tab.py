@@ -133,20 +133,34 @@ class TextScreenTab(ttk.Frame):
                 img_id = self.aquascii_canvas.create_image(x, y, anchor="nw", image=self.aquascii_images[idx])
                 self.aquascii_canvas_images.append(img_id)
         self.draw_aquascii_overlay()
-
         # Main screen grid (contiguous pixel field)
-        screen_frame = tk.LabelFrame(editor_layout, text="Screen", bg="#D0D0D0", width=736, height=496)
-        screen_frame.pack(side=tk.LEFT, fill=tk.Y, padx=(0,10))
-        self.screen_canvas = tk.Canvas(screen_frame, width=736, height=496, bg="#E0E0E0", highlightthickness=0)
+        self.screen_frame = tk.LabelFrame(editor_layout, text="Screen", bg="#D0D0D0", width=736, height=496)
+        self.screen_frame.pack(side=tk.LEFT, fill=tk.Y, padx=(0,10))
+        self.screen_canvas = tk.Canvas(self.screen_frame, width=736, height=496, bg="#E0E0E0", highlightthickness=0)
         self.screen_canvas.pack(side=tk.TOP, anchor="n", padx=16, pady=16)
         # Initialize screen buffer (all space character, code 32)
         self.screen_buffer = [[32 for _ in range(self.total_cols)] for _ in range(self.total_rows)]
         # Bind events and register callbacks after creating screen_canvas and screen_buffer
         self.screen_canvas.bind("<Button-1>", self.on_screen_click)
         self.screen_canvas.bind("<B1-Motion>", self.on_screen_drag)
-        # Ensure grid is visible at launch
+        self.screen_canvas.bind("<Button-3>", self.on_screen_right_click)
+        # Ensure grid and background are visible at launch
         self.update_screen_grid()
-        self.col_mode_var.trace_add("write", self.on_col_mode_change)
+
+    def on_screen_right_click(self, event):
+        col = event.x // self.cell_width
+        row = event.y // self.cell_height
+        active_start_col = self.border_chars
+        active_end_col = self.total_cols - self.border_chars
+        active_start_row = self.border_chars
+        active_end_row = self.total_rows - self.border_chars
+
+        # Only pick up character if in active area
+        if (active_start_col <= col < active_end_col and active_start_row <= row < active_end_row):
+            picked_char = self.screen_buffer[row][col]
+            if 0 <= picked_char < len(self.aquascii_images):
+                self.active_char = picked_char
+                self.draw_aquascii_overlay()
 
     def on_aquascii_click(self, event):
         # Determine which character cell was clicked
