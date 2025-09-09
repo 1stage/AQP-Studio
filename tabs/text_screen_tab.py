@@ -58,7 +58,7 @@ class TextScreenTab(ttk.Frame):
 
         # Main Frame
         self.main_frame = tk.Frame(self, bg="#D0D0D0")
-        self.main_frame.pack(fill=tk.X, pady=(10,4))
+        self.main_frame.pack(fill=tk.X)
 
         # Columns mode variable
         self.col_mode_var = tk.StringVar(value="40")
@@ -91,14 +91,27 @@ class TextScreenTab(ttk.Frame):
         palette_and_controls_frame = tk.Frame(editor_layout, bg="#D0D0D0")
         palette_and_controls_frame.pack(side=tk.LEFT, anchor="n", pady=(0,10))
 
-        # Palette selector (8x4 grid placeholder)
+        # Palette selector with FG and BG sub-sections
         palette_frame = tk.LabelFrame(palette_and_controls_frame, text="Palette", bg="#D0D0D0", width=80)
         palette_frame.pack(side=tk.TOP, anchor="n")
         self.palette_labels = []
-        for row in range(8):
+
+        fg_frame = tk.LabelFrame(palette_frame, text="FG", bg="#D0D0D0")
+        fg_frame.grid(row=0, column=0, padx=2, pady=(2,2))
+        for row in range(4):
             row_labels = []
             for col in range(4):
-                lbl = tk.Label(palette_frame, text="", width=4, height=1, bg="#C0C0C0", relief=tk.RIDGE)
+                lbl = tk.Label(fg_frame, text="", width=4, height=1, bg="#C0C0C0", relief=tk.RIDGE)
+                lbl.grid(row=row, column=col, padx=1, pady=1)
+                row_labels.append(lbl)
+            self.palette_labels.append(row_labels)
+
+        bg_frame = tk.LabelFrame(palette_frame, text="BG", bg="#D0D0D0")
+        bg_frame.grid(row=1, column=0, padx=2, pady=(2,2))
+        for row in range(4):
+            row_labels = []
+            for col in range(4):
+                lbl = tk.Label(bg_frame, text="", width=4, height=1, bg="#C0C0C0", relief=tk.RIDGE)
                 lbl.grid(row=row, column=col, padx=1, pady=1)
                 row_labels.append(lbl)
             self.palette_labels.append(row_labels)
@@ -125,7 +138,7 @@ class TextScreenTab(ttk.Frame):
         tk.Checkbutton(paint_section, text="BG", variable=self.paint_bg_var, bg="#D0D0D0").pack(side=tk.LEFT, padx=4, pady=2)
 
         # Show Grid sub-section
-        show_grid_section = tk.LabelFrame(mode_frame, text="Grid", bg="#D0D0D0")
+        show_grid_section = tk.LabelFrame(mode_frame, text="Visual Aids", bg="#D0D0D0")
         show_grid_section.pack(side=tk.TOP, fill=tk.X, padx=8, pady=(4,8))
         tk.Checkbutton(show_grid_section, text="Show Grid", variable=self.show_grid_var, bg="#D0D0D0", command=self.update_screen_grid).pack(side=tk.LEFT, padx=4, pady=2)
 
