@@ -97,17 +97,7 @@ class TextScreenTab(ttk.Frame):
         aquascii_panel.pack(side=tk.LEFT, fill=tk.Y, padx=(0,16), ipadx=8, ipady=8)
         self.aquascii_canvas = tk.Canvas(aquascii_panel, width=aquascii_canvas_width, height=aquascii_canvas_height, bg="#FFFFFF", highlightthickness=0, bd=0)
         self.aquascii_canvas.pack(side=tk.TOP, fill=tk.Y, padx=8, pady=8)
-        # Load AQUASCII character images (choose PNG or BIN)
-        try:
-            target_width = self.cell_width
-            target_height = self.cell_height
-            # Uncomment one of the following lines to choose source:
-            # images = self.load_aquascii_png("assets/aquascii.png", target_width, target_height)
-            images = self.load_aquascii_bin("assets/aquascii.bin", target_width, target_height)
-            self.aquascii_images = images  # Store as attribute to prevent GC
-        except Exception as err:
-            print("Failed to load AQUASCII character set:", err)
-            self.aquascii_images = []
+        self.aquascii_canvas.bind("<Button-1>", self.on_aquascii_click)
 
         # Palette selector (16x2 grid placeholder)
         palette_frame = tk.LabelFrame(editor_layout, text="Palette", bg="#D0D0D0", width=80)
@@ -121,7 +111,17 @@ class TextScreenTab(ttk.Frame):
                 row_labels.append(lbl)
             self.palette_labels.append(row_labels)
 
-                # Palette selector (16x2 grid placeholder)
+            # Load AQUASCII character images (choose PNG or BIN)
+            self.aquascii_images = []
+            try:
+                target_width = self.cell_width
+                target_height = self.cell_height
+                # Uncomment one of the following lines to choose source:
+                # images = self.load_aquascii_png("assets/aquascii.png", target_width, target_height)
+                images = self.load_aquascii_bin("assets/aquascii.bin", target_width, target_height)
+                self.aquascii_images = images  # Store as attribute to prevent GC
+            except Exception as err:
+                print("Failed to load AQUASCII character set:", err)
         # Draw all character images with spacing
         self.aquascii_canvas_images = []
         for idx in range(32*8):
@@ -132,10 +132,7 @@ class TextScreenTab(ttk.Frame):
             if idx < len(self.aquascii_images):
                 img_id = self.aquascii_canvas.create_image(x, y, anchor="nw", image=self.aquascii_images[idx])
                 self.aquascii_canvas_images.append(img_id)
-        # Draw red overlay for active character with spacing
-        ax = (self.active_char % 8) * (self.cell_width + self.char_spacing)
-        ay = (self.active_char // 8) * (self.cell_height + self.char_spacing)
-        self.aquascii_canvas.create_rectangle(ax, ay, ax+self.cell_width, ay+self.cell_height, outline="#FF0000", width=2)
+        self.draw_aquascii_overlay()
 
         # Main screen grid (contiguous pixel field)
         screen_frame = tk.LabelFrame(editor_layout, text="Screen", bg="#D0D0D0", width=736, height=496)
@@ -150,6 +147,22 @@ class TextScreenTab(ttk.Frame):
         # Ensure grid is visible at launch
         self.update_screen_grid()
         self.col_mode_var.trace_add("write", self.on_col_mode_change)
+
+    def on_aquascii_click(self, event):
+        # Determine which character cell was clicked
+        col = event.x // (self.cell_width + self.char_spacing)
+        row = event.y // (self.cell_height + self.char_spacing)
+        idx = row * 8 + col
+        if 0 <= idx < len(self.aquascii_images):
+            self.active_char = idx
+            self.draw_aquascii_overlay()
+
+    def draw_aquascii_overlay(self):
+        # Remove previous overlay
+        self.aquascii_canvas.delete("active_overlay")
+        ax = (self.active_char % 8) * (self.cell_width + self.char_spacing)
+        ay = (self.active_char // 8) * (self.cell_height + self.char_spacing)
+        self.aquascii_canvas.create_rectangle(ax, ay, ax+self.cell_width, ay+self.cell_height, outline="#FF0000", width=2, tags="active_overlay")
     def draw_screen_grid(self):
         # Draw AQUASCII characters in each cell according to self.screen_buffer
         self.screen_canvas.delete("charimg")
