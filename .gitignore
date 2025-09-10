@@ -1,2 +1,3 @@
 error_log.txt
 build/
+tabs/__pycache__/
