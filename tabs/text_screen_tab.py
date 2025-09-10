@@ -78,7 +78,7 @@ class TextScreenTab(ttk.Frame):
         return chars
     def __init__(self, parent):
         super().__init__(parent)
-        # Add grid toggle variable
+        # ...existing code...
         self.show_grid_var = tk.BooleanVar(value=True)
         style = ttk.Style()
         style.theme_use("clam")
@@ -86,64 +86,59 @@ class TextScreenTab(ttk.Frame):
         style.configure("TNotebook.Tab", background="#A0A0A0", font=("Arial", 10, "bold"))
         style.map("TNotebook.Tab", background=[("selected", "#D0D0D0")])
 
-        # Main Frame
         self.main_frame = tk.Frame(self, bg="#D0D0D0")
         self.main_frame.pack(fill=tk.X)
-
-        # Columns mode variable
         self.col_mode_var = tk.StringVar(value="40")
 
-        # Main layout: left = AQUASCII selector, center = screen grid, right = palette selector
         editor_layout = tk.Frame(self, bg="#D0D0D0")
         editor_layout.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
 
-        # Calculate cell size and grid params before AQUASCII panel
-        self.border_pixels = 48  # Fixed border size in actual pixels
+        self.border_pixels = 48
         self.cell_width, self.cell_height, self.cols, self.rows, self.border_cols, self.border_rows = self.get_grid_params()
         self.total_cols = self.cols + 2 * self.border_cols
         self.total_rows = self.rows + 2 * self.border_rows
 
-        # AQUASCII character selector panel with label and spacing
-        aquascii_cell_width = 16  # Always 16x16 for selector
+        # AQUASCII character selector panel
+        aquascii_cell_width = 16
         aquascii_cell_height = 16
-        self.char_spacing = 2  # Space between characters in pixels
-        self.active_char = 65  # Default to capital A (ninth row, second column)
+        self.char_spacing = 2
+        self.active_char = 65
         aquascii_canvas_width = 8 * aquascii_cell_width + (8 - 1) * self.char_spacing
         aquascii_canvas_height = 32 * aquascii_cell_height + (32 - 1) * self.char_spacing
-        aquascii_panel_width = aquascii_canvas_width + 24  # Add extra width for label and padding
+        aquascii_panel_width = aquascii_canvas_width + 24
         aquascii_panel = tk.LabelFrame(editor_layout, text="AQUASCII", bg="#D0D0D0", width=aquascii_panel_width)
         aquascii_panel.pack(side=tk.LEFT, fill=tk.Y, padx=(0,16), ipadx=8, ipady=8)
         self.aquascii_canvas = tk.Canvas(aquascii_panel, width=aquascii_canvas_width, height=aquascii_canvas_height, bg="#FFFFFF", highlightthickness=0, bd=0)
         self.aquascii_canvas.pack(side=tk.TOP, fill=tk.Y, padx=8, pady=8)
         self.aquascii_canvas.bind("<Button-1>", self.on_aquascii_click)
 
-        # Palette and Controls stacked vertically in a container frame
         palette_and_controls_frame = tk.Frame(editor_layout, bg="#D0D0D0", width=260)
         palette_and_controls_frame.pack(side=tk.LEFT, fill=tk.Y, padx=0, pady=0)
 
-        # Palette selector with FG and BG sub-sections
         palette_frame = tk.LabelFrame(palette_and_controls_frame, text="Palette", bg="#D0D0D0")
         palette_frame.pack(side=tk.TOP, fill=tk.X, padx=8, pady=0)
-        self.palette_labels = []
+        self.fg_labels = []
+        self.bg_labels = []
+        self.selected_fg_idx = 0
+        self.selected_bg_idx = 7
 
-        # Aquarius 16-color palette (3-nybble RGB values)
         aquarius_palette = [
-            (0x11, 0x11, 0x11),   # idx 0, BLK
-            (0xFF, 0x11, 0x11),   # idx 1, RED
-            (0x11, 0xFF, 0x11),   # idx 2, GRN
-            (0xFF, 0xFF, 0x11),   # idx 3, YEL
-            (0x22, 0x22, 0xEE),   # idx 4, BLU
-            (0xFF, 0x11, 0xFF),   # idx 5, MAG
-            (0x33, 0xCC, 0xCC),   # idx 6, CYN
-            (0xFF, 0xFF, 0xFF),   # idx 7, WHT
-            (0xCC, 0xCC, 0xCC),   # idx 8, LTGRY
-            (0x33, 0xBB, 0xBB),   # idx 9, DKCYN
-            (0xCC, 0x22, 0xCC),   # idx 10, DKMAG
-            (0x44, 0x11, 0x99),   # idx 11, DKBLU
-            (0xFF, 0xFF, 0x77),   # idx 12, LTYEL
-            (0x22, 0xDD, 0x44),   # idx 13, DKGRN
-            (0xBB, 0x22, 0x22),   # idx 14, DKRED
-            (0x33, 0x33, 0x33),   # idx 15, DKGRY
+            (0x11, 0x11, 0x11),
+            (0xFF, 0x11, 0x11),
+            (0x11, 0xFF, 0x11),
+            (0xFF, 0xFF, 0x11),
+            (0x22, 0x22, 0xEE),
+            (0xFF, 0x11, 0xFF),
+            (0x33, 0xCC, 0xCC),
+            (0xFF, 0xFF, 0xFF),
+            (0xCC, 0xCC, 0xCC),
+            (0x33, 0xBB, 0xBB),
+            (0xCC, 0x22, 0xCC),
+            (0x44, 0x11, 0x99),
+            (0xFF, 0xFF, 0x77),
+            (0x22, 0xDD, 0x44),
+            (0xBB, 0x22, 0x22),
+            (0x33, 0x33, 0x33),
         ]
 
         fg_frame = tk.LabelFrame(palette_frame, text="FG", bg="#D0D0D0")
@@ -157,11 +152,12 @@ class TextScreenTab(ttk.Frame):
                 idx = row * 4 + col
                 rgb = aquarius_palette[idx]
                 color = f'#{rgb[0]:02X}{rgb[1]:02X}{rgb[2]:02X}'
-                border_color = "#FF0000" if idx == 0 else "#D0D0D0"
+                border_color = "#FF0000" if idx == self.selected_fg_idx else "#D0D0D0"
                 lbl = tk.Label(fg_frame, text="", width=4, height=1, bg=color, highlightbackground=border_color, highlightcolor=border_color, highlightthickness=4, bd=0, borderwidth=0)
                 lbl.grid(row=row, column=col, padx=8, pady=1, sticky="ew")
+                lbl.bind("<Button-1>", lambda e, i=idx: self.select_fg_swatch(i))
                 row_labels.append(lbl)
-            self.palette_labels.append(row_labels)
+            self.fg_labels.append(row_labels)
 
         bg_frame = tk.LabelFrame(palette_frame, text="BG", bg="#D0D0D0")
         bg_frame.grid(row=1, column=0, padx=2, pady=(8,2), sticky="ew")
@@ -173,11 +169,126 @@ class TextScreenTab(ttk.Frame):
                 idx = row * 4 + col
                 rgb = aquarius_palette[idx]
                 color = f'#{rgb[0]:02X}{rgb[1]:02X}{rgb[2]:02X}'
-                border_color = "#FF0000" if idx == 7 else "#D0D0D0"
+                border_color = "#FF0000" if idx == self.selected_bg_idx else "#D0D0D0"
                 lbl = tk.Label(bg_frame, text="", width=4, height=1, bg=color, highlightbackground=border_color, highlightcolor=border_color, highlightthickness=4, bd=0, borderwidth=0)
                 lbl.grid(row=row, column=col, padx=8, pady=1, sticky="ew")
+                lbl.bind("<Button-1>", lambda e, i=idx: self.select_bg_swatch(i))
                 row_labels.append(lbl)
-            self.palette_labels.append(row_labels)
+            self.bg_labels.append(row_labels)
+
+        # Controls: mode toggles
+        mode_frame = tk.LabelFrame(palette_and_controls_frame, text="Controls", bg="#D0D0D0")
+        mode_frame.pack(side=tk.TOP, fill=tk.X, padx=8, pady=(10,4))
+
+        # Screen Mode sub-section
+        screen_mode_section = tk.LabelFrame(mode_frame, text="Screen Mode", bg="#D0D0D0")
+        screen_mode_section.pack(side=tk.TOP, fill=tk.X, padx=8, pady=(8,4))
+        tk.Radiobutton(screen_mode_section, text="40 Col", variable=self.col_mode_var, value="40", bg="#D0D0D0").pack(side=tk.LEFT, padx=4, pady=2)
+        tk.Radiobutton(screen_mode_section, text="80 Col", variable=self.col_mode_var, value="80", bg="#D0D0D0").pack(side=tk.LEFT, padx=4, pady=2)
+        self.col_mode_var.trace_add("write", self.on_col_mode_change)
+
+        # Paint sub-section
+        self.paint_char_var = tk.BooleanVar(value=True)
+        self.paint_fg_var = tk.BooleanVar(value=True)
+        self.paint_bg_var = tk.BooleanVar(value=True)
+        paint_section = tk.LabelFrame(mode_frame, text="Paint", bg="#D0D0D0")
+        paint_section.pack(side=tk.TOP, fill=tk.X, padx=8, pady=(4,4))
+        tk.Checkbutton(paint_section, text="Char", variable=self.paint_char_var, bg="#D0D0D0").pack(side=tk.LEFT, padx=4, pady=2)
+        tk.Checkbutton(paint_section, text="FG", variable=self.paint_fg_var, bg="#D0D0D0").pack(side=tk.LEFT, padx=4, pady=2)
+        tk.Checkbutton(paint_section, text="BG", variable=self.paint_bg_var, bg="#D0D0D0").pack(side=tk.LEFT, padx=4, pady=2)
+
+        # Show Grid sub-section
+        show_grid_section = tk.LabelFrame(mode_frame, text="Visual Aids", bg="#D0D0D0")
+        show_grid_section.pack(side=tk.TOP, fill=tk.X, padx=8, pady=(4,8))
+        tk.Checkbutton(show_grid_section, text="Show Grid", variable=self.show_grid_var, bg="#D0D0D0", command=self.update_screen_grid).pack(side=tk.LEFT, padx=4, pady=2)
+
+        # Load AQUASCII character images (choose PNG or BIN)
+        self.aquascii_images = []
+        try:
+            target_width = self.cell_width
+            target_height = self.cell_height
+            if self.cols == 80:
+                target_width = 8
+                target_height = 16
+            else:
+                target_width = 16
+                target_height = 16
+            images = self.load_aquascii_bin("assets/aquascii.bin", target_width, target_height)
+            self.aquascii_images = images
+        except Exception as err:
+            print("Failed to load AQUASCII character set:", err)
+
+        self.aquascii_images_selector = []
+        try:
+            images_selector = self.load_aquascii_bin("assets/aquascii.bin", 16, 16)
+            self.aquascii_images_selector = images_selector
+        except Exception as err:
+            print("Failed to load AQUASCII character set for selector:", err)
+        self.aquascii_canvas_images = []
+        for idx in range(32*8):
+            row = idx // 8
+            col = idx % 8
+            x = col * (aquascii_cell_width + self.char_spacing)
+            y = row * (aquascii_cell_height + self.char_spacing)
+            if idx < len(self.aquascii_images_selector):
+                img_id = self.aquascii_canvas.create_image(x, y, anchor="nw", image=self.aquascii_images_selector[idx])
+                self.aquascii_canvas_images.append(img_id)
+        self.draw_aquascii_overlay()
+
+        self.aquascii_images_grid = []
+        try:
+            if self.cols == 80:
+                images_grid = self.load_aquascii_bin("assets/aquascii.bin", 8, 16)
+            else:
+                images_grid = self.load_aquascii_bin("assets/aquascii.bin", 16, 16)
+            self.aquascii_images_grid = images_grid
+        except Exception as err:
+            print("Failed to load AQUASCII character set for grid:", err)
+
+        self.screen_frame = tk.LabelFrame(editor_layout, text="Screen", bg="#D0D0D0", width=736, height=496)
+        self.screen_frame.pack(side=tk.LEFT, fill=tk.Y, padx=(0,10))
+        self.screen_canvas = tk.Canvas(self.screen_frame, width=736, height=496, bg="#E0E0E0", highlightthickness=0)
+        self.screen_canvas.pack(side=tk.TOP, anchor="n", padx=16, pady=16)
+        self.screen_buffer = [[32 for _ in range(self.total_cols)] for _ in range(self.total_rows)]
+        self.right_80_buffer = None
+        self.screen_canvas.bind("<Button-1>", self.on_screen_click)
+        self.screen_canvas.bind("<B1-Motion>", self.on_screen_drag)
+        self.screen_canvas.bind("<Button-3>", self.on_screen_right_click)
+        self.update_screen_grid()
+    def select_fg_swatch(self, idx):
+        self.selected_fg_idx = idx
+        for row in self.fg_labels:
+            for lbl in row:
+                lbl.config(highlightbackground="#D0D0D0", highlightcolor="#D0D0D0")
+        fg_row = idx // 4
+        fg_col = idx % 4
+        self.fg_labels[fg_row][fg_col].config(highlightbackground="#FF0000", highlightcolor="#FF0000")
+
+    def select_bg_swatch(self, idx):
+        self.selected_bg_idx = idx
+        for row in self.bg_labels:
+            for lbl in row:
+                lbl.config(highlightbackground="#D0D0D0", highlightcolor="#D0D0D0")
+        bg_row = idx // 4
+        bg_col = idx % 4
+        self.bg_labels[bg_row][bg_col].config(highlightbackground="#FF0000", highlightcolor="#FF0000")
+    def select_fg_swatch(self, idx):
+        self.selected_fg_idx = idx
+        for row in self.fg_labels:
+            for lbl in row:
+                lbl.config(highlightbackground="#D0D0D0", highlightcolor="#D0D0D0")
+        fg_row = idx // 4
+        fg_col = idx % 4
+        self.fg_labels[fg_row][fg_col].config(highlightbackground="#FF0000", highlightcolor="#FF0000")
+
+    def select_bg_swatch(self, idx):
+        self.selected_bg_idx = idx
+        for row in self.bg_labels:
+            for lbl in row:
+                lbl.config(highlightbackground="#D0D0D0", highlightcolor="#D0D0D0")
+        bg_row = idx // 4
+        bg_col = idx % 4
+        self.bg_labels[bg_row][bg_col].config(highlightbackground="#FF0000", highlightcolor="#FF0000")
 
         # Controls: mode toggles
         mode_frame = tk.LabelFrame(palette_and_controls_frame, text="Controls", bg="#D0D0D0")
