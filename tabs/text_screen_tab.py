@@ -191,8 +191,10 @@ class TextScreenTab(ttk.Frame):
         # Character preview panel (below checkboxes)
         self.char_preview_frame = tk.Frame(paint_panel, bg="#D0D0D0", highlightbackground="#404040", highlightthickness=2, bd=2, relief="groove")
         self.char_preview_frame.grid(row=1, column=0, columnspan=3, sticky="nsew", padx=8, pady=(8,8))
-        self.char_preview_canvas = tk.Canvas(self.char_preview_frame, width=64, height=64, bg="#E0E0E0", highlightthickness=0)
+        self.char_preview_canvas = tk.Canvas(self.char_preview_frame, width=32, height=32, bg="#E0E0E0", highlightthickness=0)
         self.char_preview_canvas.pack(expand=True, fill=tk.BOTH)
+        # Ensure initial preview is shown at startup
+        self.update_char_preview()
 
         self.aquascii_canvas = tk.Canvas(aquascii_panel, width=aquascii_canvas_width, height=aquascii_canvas_height, bg="#FFFFFF", highlightthickness=0, bd=0)
         self.aquascii_canvas.pack(side=tk.TOP, fill=tk.Y, padx=8, pady=8)
@@ -230,8 +232,9 @@ class TextScreenTab(ttk.Frame):
         self.screen_canvas.bind("<B1-Motion>", self.on_screen_drag)
         self.screen_canvas.bind("<Button-3>", self.on_screen_right_click)
         self.update_screen_grid()
-        self.char_preview_canvas = tk.Canvas(self.char_preview_frame, width=64, height=64, bg="#E0E0E0", highlightthickness=0)
-        self.char_preview_canvas.pack(expand=True, fill=tk.BOTH)
+        # Remove duplicate char_preview_canvas creation
+        # Ensure initial preview is shown at startup
+        self.update_char_preview()
 
     def update_char_preview(self):
         # Determine resolution and logical pixel size
@@ -247,30 +250,49 @@ class TextScreenTab(ttk.Frame):
         ]
         fg_color = f'#{palette[fg_idx][0]:02X}{palette[fg_idx][1]:02X}{palette[fg_idx][2]:02X}'
         bg_color = f'#{palette[bg_idx][0]:02X}{palette[bg_idx][1]:02X}{palette[bg_idx][2]:02X}'
+        # Set preview size and logical pixel size
         if mode == "80":
-            width, height = 32, 64
-            logical_w, logical_h = 4, 8
+            width, height = 16, 32
+            logical_w, logical_h = 2, 4
         else:
-            width, height = 64, 64
-            logical_w, logical_h = 8, 8
+            width, height = 32, 32
+            logical_w, logical_h = 4, 4
         self.char_preview_canvas.config(width=width, height=height)
         # Get bitmap for character
-        if hasattr(self, 'aquascii_images') and self.aquascii_images:
-            # Use binary data if available
-            char_img = self.get_char_bitmap(char_code)
-            img = self.render_char_bitmap(char_img, width, height, logical_w, logical_h, fg_color, bg_color)
-            self.char_preview_imgtk = ImageTk.PhotoImage(img)
-            self.char_preview_canvas.delete("all")
-            self.char_preview_canvas.create_image(width//2, height//2, image=self.char_preview_imgtk, anchor="center")
+        bitmap = self.get_char_bitmap(char_code)
+        # Render preview: BG for 0 pixels, FG for 1 pixels
+        from PIL import Image, ImageDraw
+        img = Image.new("RGB", (width, height), bg_color)
+        draw = ImageDraw.Draw(img)
+        rows = len(bitmap)
+        cols = len(bitmap[0]) if rows > 0 else 0
+        for y in range(rows):
+            for x in range(cols):
+                color = fg_color if bitmap[y][x] else bg_color
+                px = x * logical_w
+                py = y * logical_h
+                draw.rectangle([px, py, px+logical_w-1, py+logical_h-1], fill=color)
+        self.char_preview_imgtk = ImageTk.PhotoImage(img)
+        self.char_preview_canvas.delete("all")
+        self.char_preview_canvas.create_image(width//2, height//2, image=self.char_preview_imgtk, anchor="center")
 
     def get_char_bitmap(self, char_code):
-        # Returns 8x8 bitmap for character code
-        # Assumes aquascii_images is loaded from BIN as 8x8 blocks
-        # For now, use a placeholder: all foreground
-        # TODO: Replace with actual bitmap extraction if available
-        # If you have a method to get bitmap from aquascii_images, use it here
-        # Placeholder: 8x8 array, all 1s
-        return [[1]*8 for _ in range(8)]
+        # Returns 8x8 bitmap for character code from loaded AQUASCII binary
+        # Use the binary data loaded in self.aquascii_images_selector
+        try:
+            # Load raw bytes from the BIN file (assume 8 bytes per char, 256 chars)
+            with open("assets/aquascii.bin", "rb") as f:
+                data = f.read()
+            offset = char_code * 8
+            char_bytes = data[offset:offset+8]
+            bitmap = []
+            for byte in char_bytes:
+                row = [(byte >> (7-x)) & 1 for x in range(8)]
+                bitmap.append(row)
+            return bitmap
+        except Exception:
+            # Fallback: all foreground
+            return [[1]*8 for _ in range(8)]
 
     def render_char_bitmap(self, bitmap, width, height, logical_w, logical_h, fg_color, bg_color):
         from PIL import Image, ImageDraw
@@ -317,6 +339,7 @@ class TextScreenTab(ttk.Frame):
             if 0 <= picked_char < len(self.aquascii_images):
                 self.active_char = picked_char
                 self.draw_aquascii_overlay()
+                self.update_char_preview()
 
     def on_aquascii_click(self, event):
         # Use fixed 16x16 cell size for selector panel
@@ -505,7 +528,11 @@ class TextScreenTab(ttk.Frame):
         else:
             self.aquascii_images_grid = self.load_aquascii_bin("assets/aquascii.bin", 16, 16)
         # Redraw everything
+        # Update character preview immediately
+        self.update_char_preview()
         self.update_screen_grid()
+    # Redraw everything
+    # Update character preview immediately
 
     def on_tab_active(self):
         # Call this when the tab becomes active to sync grid overlay
