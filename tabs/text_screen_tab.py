@@ -192,10 +192,20 @@ class TextScreenTab(ttk.Frame):
         char_cb.grid(row=0, column=0, sticky="nsew", padx=8, pady=(8,2))
         fg_cb.grid(row=0, column=1, sticky="nsew", padx=8, pady=(8,2))
         bg_cb.grid(row=0, column=2, sticky="nsew", padx=8, pady=(8,2))
-        self.char_preview_frame = tk.Frame(paint_panel, bg="#D0D0D0", highlightbackground="#404040", highlightthickness=2, bd=2, relief="groove")
-        self.char_preview_frame.grid(row=1, column=0, columnspan=3, sticky="nsew", padx=8, pady=(8,8))
+        self.char_preview_frame = tk.Frame(
+            paint_panel,
+            bg="#D0D0D0",
+            highlightbackground="#222222",
+            highlightcolor="#222222",
+            highlightthickness=2,
+            bd=0,
+            relief="flat"
+        )
+        # Place preview in row 1, column 1, visually left-aligned under FG checkbox
+        self.char_preview_frame.grid(row=1, column=1, sticky="nw", padx=(0,16), pady=(8,8))
         self.char_preview_canvas = tk.Canvas(self.char_preview_frame, width=64, height=64, bg="#E0E0E0", highlightthickness=0)
-        self.char_preview_canvas.pack(expand=True, fill="both")
+        # Center the canvas in the frame with minimal padding
+        self.char_preview_canvas.pack(expand=False, fill=None, padx=0, pady=0)
         # Ensure initial preview is shown at startup
         self.update_char_preview()
 
@@ -265,19 +275,48 @@ class TextScreenTab(ttk.Frame):
         bitmap = self.get_char_bitmap(char_code)
         # Render preview: BG for 0 pixels, FG for 1 pixels
         from PIL import Image, ImageDraw
-        img = Image.new("RGB", (width, height), bg_color)
-        draw = ImageDraw.Draw(img)
-        rows = len(bitmap)
-        cols = len(bitmap[0]) if rows > 0 else 0
-        for y in range(rows):
-            for x in range(cols):
-                color = fg_color if bitmap[y][x] else bg_color
-                px = x * logical_w
-                py = y * logical_h
-                draw.rectangle([px, py, px+logical_w-1, py+logical_h-1], fill=color)
+        # Checkerboard only if fg == bg
+        if fg_idx == bg_idx:
+            # FG and BG are the same: outline each logical pixel with the logical NOT color
+            img = Image.new("RGB", (width, height), bg_color)
+            draw = ImageDraw.Draw(img)
+            # Compute logical NOT color
+            fg_rgb = tuple(int(fg_color[i:i+2], 16) for i in (1, 3, 5))
+            not_rgb = tuple(255 - c for c in fg_rgb)
+            not_color = '#%02X%02X%02X' % not_rgb
+            rows = len(bitmap)
+            cols = len(bitmap[0]) if rows > 0 else 0
+            for y in range(rows):
+                for x in range(cols):
+                    px = x * logical_w
+                    py = y * logical_h
+                    if bitmap[y][x]:
+                        # Draw outline rectangle (1 pixel border)
+                        draw.rectangle([px, py, px+logical_w-1, py+logical_h-1], outline=not_color, width=1)
+                        # Fill center with FG/BG color
+                        draw.rectangle([px+1, py+1, px+logical_w-2, py+logical_h-2], fill=fg_color)
+        else:
+            img = Image.new("RGB", (width, height), bg_color)
+            draw = ImageDraw.Draw(img)
+            rows = len(bitmap)
+            cols = len(bitmap[0]) if rows > 0 else 0
+            for y in range(rows):
+                for x in range(cols):
+                    color = fg_color if bitmap[y][x] else bg_color
+                    px = x * logical_w
+                    py = y * logical_h
+                    draw.rectangle([px, py, px+logical_w-1, py+logical_h-1], fill=color)
         self.char_preview_imgtk = ImageTk.PhotoImage(img)
         self.char_preview_canvas.delete("all")
         self.char_preview_canvas.create_image(width//2, height//2, image=self.char_preview_imgtk, anchor="center")
+
+    def _is_dark_color(self, hex_color):
+        # Helper to determine if a color is dark (for checkerboard contrast)
+        hex_color = hex_color.lstrip('#')
+        r, g, b = int(hex_color[0:2], 16), int(hex_color[2:4], 16), int(hex_color[4:6], 16)
+        # Perceived brightness
+        brightness = (r*299 + g*587 + b*114) / 1000
+        return brightness < 128
 
     def get_char_bitmap(self, char_code):
         # Returns 8x8 bitmap for character code from loaded AQUASCII binary
