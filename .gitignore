@@ -1,3 +1,4 @@
 error_log.txt
 build/
 tabs/__pycache__/
+tabs/__pycache__/*.pyc
