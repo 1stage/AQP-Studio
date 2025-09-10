@@ -184,15 +184,18 @@ class TextScreenTab(ttk.Frame):
         char_cb = tk.Checkbutton(paint_panel, text="Char", variable=self.paint_char_var, bg="#D0D0D0")
         fg_cb = tk.Checkbutton(paint_panel, text="FG", variable=self.paint_fg_var, bg="#D0D0D0")
         bg_cb = tk.Checkbutton(paint_panel, text="BG", variable=self.paint_bg_var, bg="#D0D0D0")
+        # Make sure paint_panel row 1 expands
+        paint_panel.grid_rowconfigure(1, weight=1)
+        paint_panel.grid_columnconfigure(0, weight=1)
+        paint_panel.grid_columnconfigure(1, weight=1)
+        paint_panel.grid_columnconfigure(2, weight=1)
         char_cb.grid(row=0, column=0, sticky="nsew", padx=8, pady=(8,2))
         fg_cb.grid(row=0, column=1, sticky="nsew", padx=8, pady=(8,2))
         bg_cb.grid(row=0, column=2, sticky="nsew", padx=8, pady=(8,2))
-
-        # Character preview panel (below checkboxes)
         self.char_preview_frame = tk.Frame(paint_panel, bg="#D0D0D0", highlightbackground="#404040", highlightthickness=2, bd=2, relief="groove")
         self.char_preview_frame.grid(row=1, column=0, columnspan=3, sticky="nsew", padx=8, pady=(8,8))
-        self.char_preview_canvas = tk.Canvas(self.char_preview_frame, width=32, height=32, bg="#E0E0E0", highlightthickness=0)
-        self.char_preview_canvas.pack(expand=True, fill=tk.BOTH)
+        self.char_preview_canvas = tk.Canvas(self.char_preview_frame, width=64, height=64, bg="#E0E0E0", highlightthickness=0)
+        self.char_preview_canvas.pack(expand=True, fill="both")
         # Ensure initial preview is shown at startup
         self.update_char_preview()
 
@@ -252,11 +255,11 @@ class TextScreenTab(ttk.Frame):
         bg_color = f'#{palette[bg_idx][0]:02X}{palette[bg_idx][1]:02X}{palette[bg_idx][2]:02X}'
         # Set preview size and logical pixel size
         if mode == "80":
-            width, height = 16, 32
-            logical_w, logical_h = 2, 4
+            width, height = 32, 64
+            logical_w, logical_h = 4, 8
         else:
-            width, height = 32, 32
-            logical_w, logical_h = 4, 4
+            width, height = 64, 64
+            logical_w, logical_h = 8, 8
         self.char_preview_canvas.config(width=width, height=height)
         # Get bitmap for character
         bitmap = self.get_char_bitmap(char_code)
