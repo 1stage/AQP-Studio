@@ -3,6 +3,36 @@ from PIL import Image, ImageTk
 from tkinter import ttk
 
 class TextScreenTab(ttk.Frame):
+    def _interpolate_cells(self, start, end):
+        # Bresenham's line algorithm for grid interpolation
+        x0, y0 = start
+        x1, y1 = end
+        cells = []
+        dx = abs(x1 - x0)
+        dy = abs(y1 - y0)
+        x, y = x0, y0
+        sx = 1 if x0 < x1 else -1
+        sy = 1 if y0 < y1 else -1
+        if dx > dy:
+            err = dx / 2.0
+            while x != x1:
+                cells.append((y, x))
+                err -= dy
+                if err < 0:
+                    y += sy
+                    err += dx
+                x += sx
+        else:
+            err = dy / 2.0
+            while y != y1:
+                cells.append((y, x))
+                err -= dx
+                if err < 0:
+                    x += sx
+                    err += dy
+                y += sy
+        cells.append((y1, x1))
+        return cells
     def load_aquascii_bin(self, path, target_width, target_height):
         """Load AQUASCII characters from a BIN file as 8x8 blocks, each 8 bytes, resized to target size."""
         import os
@@ -324,10 +354,27 @@ class TextScreenTab(ttk.Frame):
             self.update_screen_grid()
 
     def on_screen_click(self, event):
+        col = event.x // self.cell_width
+        row = event.y // self.cell_height
+        self._prev_draw_cell = (col, row)
         self.handle_screen_draw(event)
 
     def on_screen_drag(self, event):
-        self.handle_screen_draw(event)
+        col = event.x // self.cell_width
+        row = event.y // self.cell_height
+        prev = getattr(self, '_prev_draw_cell', None)
+        curr = (col, row)
+        if prev is not None and prev != curr:
+            for y, x in self._interpolate_cells(prev, curr):
+                # Only draw in active area
+                active_start_col = self.border_cols
+                active_end_col = self.total_cols - self.border_cols
+                active_start_row = self.border_rows
+                active_end_row = self.total_rows - self.border_rows
+                if (active_start_col <= x < active_end_col and active_start_row <= y < active_end_row):
+                    self.screen_buffer[y][x] = self.active_char
+            self.update_screen_grid()
+        self._prev_draw_cell = curr
 
 
     def get_grid_params(self):
