@@ -1,3 +1,4 @@
+# Ensure main_frame and editor_layout are packed first
 import tkinter as tk
 from PIL import Image, ImageTk
 from tkinter import ttk
@@ -54,45 +55,44 @@ class TextScreenTab(ttk.Frame):
             img = img.resize((target_width, target_height), Image.NEAREST)
             chars.append(ImageTk.PhotoImage(img))
         return chars
-    def load_aquascii_png(self, path, target_width, target_height):
-        """Load AQUASCII characters from a PNG image as 8x8 blocks, left-to-right, top-to-bottom, resized to target size."""
-        img = Image.open(path)
-        char_width, char_height = 8, 8
-        img_width, img_height = img.size
-        blocks_per_row = img_width // char_width
-        blocks_per_col = img_height // char_height
-        chars = []
-        for block_idx in range(blocks_per_row * blocks_per_col):
-            row = block_idx // blocks_per_row
-            col = block_idx % blocks_per_row
-            left = col * char_width
-            upper = row * char_height
-            right = left + char_width
-            lower = upper + char_height
-            char_img = img.crop((left, upper, right, lower))
-            char_img = char_img.resize((target_width, target_height), Image.NEAREST)
-            chars.append(ImageTk.PhotoImage(char_img))
-        return chars
+
+    def __init__(self, parent):
+        super().__init__(parent)
     def __init__(self, parent):
         super().__init__(parent)
         self.show_grid_var = tk.BooleanVar(value=True)
+        self.show_grid_var.trace_add("write", lambda *args: self.update_screen_grid())
         style = ttk.Style()
         style.theme_use("clam")
         style.configure("TNotebook", background="#808080", borderwidth=0)
         style.configure("TNotebook.Tab", background="#A0A0A0", font=("Arial", 10, "bold"))
         style.map("TNotebook.Tab", background=[("selected", "#D0D0D0")])
 
+        self.fg_labels = [None] * 16
+        self.bg_labels = [None] * 16
+        self.selected_fg_idx = 0
+        self.selected_bg_idx = 7
+
         self.main_frame = tk.Frame(self, bg="#D0D0D0")
         self.main_frame.pack(fill=tk.X)
         self.col_mode_var = tk.StringVar(value="40")
 
-        editor_layout = tk.Frame(self, bg="#D0D0D0")
-        editor_layout.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
+        # Use self as parent for editor_layout
+        self.editor_layout = tk.Frame(self, bg="#D0D0D0")
+        self.editor_layout.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
 
         self.border_pixels = 48
         self.cell_width, self.cell_height, self.cols, self.rows, self.border_cols, self.border_rows = self.get_grid_params()
         self.total_cols = self.cols + 2 * self.border_cols
         self.total_rows = self.rows + 2 * self.border_rows
+
+        # Screen panel and canvas (must be created before usage)
+        self.screen_frame = tk.LabelFrame(self.editor_layout, text="Screen", bg="#D0D0D0", width=736, height=496)
+        self.screen_frame.pack(side=tk.RIGHT, fill=tk.Y, padx=(0,8))
+        self.screen_canvas = tk.Canvas(self.screen_frame, width=736, height=496, bg="#E0E0E0", highlightthickness=0)
+        self.screen_canvas.pack(side=tk.TOP, anchor="n", padx=16, pady=16)
+        self.screen_buffer = [[32 for _ in range(self.total_cols)] for _ in range(self.total_rows)]
+        self.right_80_buffer = None
 
         # AQUASCII character selector panel
         aquascii_cell_width = 16
@@ -102,21 +102,15 @@ class TextScreenTab(ttk.Frame):
         aquascii_canvas_width = 8 * aquascii_cell_width + (8 - 1) * self.char_spacing
         aquascii_canvas_height = 32 * aquascii_cell_height + (32 - 1) * self.char_spacing
         aquascii_panel_width = aquascii_canvas_width + 24
-        aquascii_panel = tk.LabelFrame(editor_layout, text="AQUASCII", bg="#D0D0D0", width=aquascii_panel_width)
-        aquascii_panel.pack(side=tk.LEFT, fill=tk.Y, padx=(0,16), ipadx=8, ipady=8)
-        self.aquascii_canvas = tk.Canvas(aquascii_panel, width=aquascii_canvas_width, height=aquascii_canvas_height, bg="#FFFFFF", highlightthickness=0, bd=0)
-        self.aquascii_canvas.pack(side=tk.TOP, fill=tk.Y, padx=8, pady=8)
-        self.aquascii_canvas.bind("<Button-1>", self.on_aquascii_click)
+        aquascii_panel = tk.LabelFrame(self.editor_layout, text="AQUASCII", bg="#D0D0D0", width=aquascii_panel_width)
+        aquascii_panel.pack(side=tk.LEFT, fill=tk.Y, padx=(0,8), ipadx=8, ipady=8)
 
-        palette_and_controls_frame = tk.Frame(editor_layout, bg="#D0D0D0", width=260)
-        palette_and_controls_frame.pack(side=tk.LEFT, fill=tk.Y, padx=0, pady=0)
+        palette_and_controls_frame = tk.Frame(self.editor_layout, bg="#D0D0D0")
+        palette_and_controls_frame.pack(side=tk.LEFT, fill=tk.Y, padx=0, pady=0, anchor="n")
 
+        # Palette frame with FG/BG subframes
         palette_frame = tk.LabelFrame(palette_and_controls_frame, text="Palette", bg="#D0D0D0")
         palette_frame.pack(side=tk.TOP, fill=tk.X, padx=8, pady=0)
-        self.fg_labels = []
-        self.bg_labels = []
-        self.selected_fg_idx = 0
-        self.selected_bg_idx = 7
 
         aquarius_palette = [
             (0x11, 0x11, 0x11),
@@ -140,55 +134,45 @@ class TextScreenTab(ttk.Frame):
         fg_frame = tk.LabelFrame(palette_frame, text="FG", bg="#D0D0D0")
         fg_frame.grid(row=0, column=0, padx=2, pady=(2,8), sticky="ew")
         palette_frame.grid_columnconfigure(0, weight=1)
-        for col in range(4):
-            fg_frame.grid_columnconfigure(col, weight=1)
-        for row in range(4):
-            row_labels = []
-            for col in range(4):
-                idx = row * 4 + col
-                rgb = aquarius_palette[idx]
-                color = f'#{rgb[0]:02X}{rgb[1]:02X}{rgb[2]:02X}'
-                border_color = "#FF0000" if idx == self.selected_fg_idx else "#D0D0D0"
-                lbl = tk.Label(fg_frame, text="", width=4, height=1, bg=color, highlightbackground=border_color, highlightcolor=border_color, highlightthickness=4, bd=0, borderwidth=0)
-                lbl.grid(row=row, column=col, padx=8, pady=1, sticky="ew")
-                lbl.bind("<Button-1>", lambda e, i=idx: self.select_fg_swatch(i))
-                row_labels.append(lbl)
-            self.fg_labels.append(row_labels)
+        for idx in range(16):
+            row = idx // 4
+            col = idx % 4
+            rgb = aquarius_palette[idx]
+            color = f'#{rgb[0]:02X}{rgb[1]:02X}{rgb[2]:02X}'
+            border_color = "#FF0000" if idx == self.selected_fg_idx else "#D0D0D0"
+            lbl = tk.Label(fg_frame, text="", width=4, height=1, bg=color, highlightbackground=border_color, highlightcolor=border_color, highlightthickness=4, bd=0, borderwidth=0)
+            lbl.grid(row=row, column=col, padx=8, pady=1, sticky="ew")
+            lbl.bind("<Button-1>", lambda e, i=idx: self.select_fg_swatch(i))
+            self.fg_labels[idx] = lbl
 
         bg_frame = tk.LabelFrame(palette_frame, text="BG", bg="#D0D0D0")
         bg_frame.grid(row=1, column=0, padx=2, pady=(8,2), sticky="ew")
-        for col in range(4):
-            bg_frame.grid_columnconfigure(col, weight=1)
-        for row in range(4):
-            row_labels = []
-            for col in range(4):
-                idx = row * 4 + col
-                rgb = aquarius_palette[idx]
-                color = f'#{rgb[0]:02X}{rgb[1]:02X}{rgb[2]:02X}'
-                border_color = "#FF0000" if idx == self.selected_bg_idx else "#D0D0D0"
-                lbl = tk.Label(bg_frame, text="", width=4, height=1, bg=color, highlightbackground=border_color, highlightcolor=border_color, highlightthickness=4, bd=0, borderwidth=0)
-                lbl.grid(row=row, column=col, padx=8, pady=1, sticky="ew")
-                lbl.bind("<Button-1>", lambda e, i=idx: self.select_bg_swatch(i))
-                row_labels.append(lbl)
-            self.bg_labels.append(row_labels)
+        for idx in range(16):
+            row = idx // 4
+            col = idx % 4
+            rgb = aquarius_palette[idx]
+            color = f'#{rgb[0]:02X}{rgb[1]:02X}{rgb[2]:02X}'
+            border_color = "#FF0000" if idx == self.selected_bg_idx else "#D0D0D0"
+            lbl = tk.Label(bg_frame, text="", width=4, height=1, bg=color, highlightbackground=border_color, highlightcolor=border_color, highlightthickness=4, bd=0, borderwidth=0)
+            lbl.grid(row=row, column=col, padx=8, pady=1, sticky="ew")
+            lbl.bind("<Button-1>", lambda e, i=idx: self.select_bg_swatch(i))
+            self.bg_labels[idx] = lbl
 
-        # Controls: mode toggles
-        mode_frame = tk.LabelFrame(palette_and_controls_frame, text="Controls", bg="#D0D0D0")
-        mode_frame.pack(side=tk.TOP, fill=tk.X, padx=8, pady=(10,4))
-
-        # Screen Mode sub-section
-        screen_mode_section = tk.LabelFrame(mode_frame, text="Screen Mode", bg="#D0D0D0")
+        # Controls panel
+        controls_frame = tk.LabelFrame(palette_and_controls_frame, text="Controls", bg="#D0D0D0")
+        controls_frame.pack(side=tk.TOP, fill=tk.X, padx=8, pady=(10,4))
+        screen_mode_section = tk.LabelFrame(controls_frame, text="Screen Mode", bg="#D0D0D0")
         screen_mode_section.pack(side=tk.TOP, fill=tk.X, padx=8, pady=(8,4))
         tk.Radiobutton(screen_mode_section, text="40 Col", variable=self.col_mode_var, value="40", bg="#D0D0D0").pack(side=tk.LEFT, padx=4, pady=2)
         tk.Radiobutton(screen_mode_section, text="80 Col", variable=self.col_mode_var, value="80", bg="#D0D0D0").pack(side=tk.LEFT, padx=4, pady=2)
         self.col_mode_var.trace_add("write", self.on_col_mode_change)
 
-        # Show Grid sub-section
-        show_grid_section = tk.LabelFrame(mode_frame, text="Visual Aids", bg="#D0D0D0")
-        show_grid_section.pack(side=tk.TOP, fill=tk.X, padx=8, pady=(4,8))
-        tk.Checkbutton(show_grid_section, text="Show Grid", variable=self.show_grid_var, bg="#D0D0D0", command=self.update_screen_grid).pack(side=tk.LEFT, padx=4, pady=2)
+        # Restore Show Grid checkbox section
+        show_grid_section = tk.LabelFrame(controls_frame, text="Visual Aids", bg="#D0D0D0")
+        show_grid_section.pack(side=tk.TOP, fill=tk.X, padx=8, pady=(4,4))
+        show_grid_cb = tk.Checkbutton(show_grid_section, text="Show Grid", variable=self.show_grid_var, bg="#D0D0D0")
+        show_grid_cb.pack(side=tk.LEFT, padx=4, pady=2)
 
-        # Paint panel (separate, below Controls)
         self.paint_char_var = tk.BooleanVar(value=True)
         self.paint_fg_var = tk.BooleanVar(value=True)
         self.paint_bg_var = tk.BooleanVar(value=True)
@@ -204,18 +188,16 @@ class TextScreenTab(ttk.Frame):
         fg_cb.grid(row=0, column=1, sticky="nsew", padx=8, pady=(8,2))
         bg_cb.grid(row=0, column=2, sticky="nsew", padx=8, pady=(8,2))
 
-        # Screen panel and canvas (must be created before usage)
-        self.screen_frame = tk.LabelFrame(editor_layout, text="Screen", bg="#D0D0D0", width=736, height=496)
-        self.screen_frame.pack(side=tk.LEFT, fill=tk.Y, padx=(0,10))
-        self.screen_canvas = tk.Canvas(self.screen_frame, width=736, height=496, bg="#E0E0E0", highlightthickness=0)
-        self.screen_canvas.pack(side=tk.TOP, anchor="n", padx=16, pady=16)
-        self.screen_buffer = [[32 for _ in range(self.total_cols)] for _ in range(self.total_rows)]
-        self.right_80_buffer = None
+        # Character preview panel (below checkboxes)
+        self.char_preview_frame = tk.Frame(paint_panel, bg="#D0D0D0", highlightbackground="#404040", highlightthickness=2, bd=2, relief="groove")
+        self.char_preview_frame.grid(row=1, column=0, columnspan=3, sticky="nsew", padx=8, pady=(8,8))
+        self.char_preview_canvas = tk.Canvas(self.char_preview_frame, width=64, height=64, bg="#E0E0E0", highlightthickness=0)
+        self.char_preview_canvas.pack(expand=True, fill=tk.BOTH)
 
-        # Load AQUASCII character images (choose PNG or BIN)
-        self.aquascii_images = []
-        target_width = self.cell_width
-        target_height = self.cell_height
+        self.aquascii_canvas = tk.Canvas(aquascii_panel, width=aquascii_canvas_width, height=aquascii_canvas_height, bg="#FFFFFF", highlightthickness=0, bd=0)
+        self.aquascii_canvas.pack(side=tk.TOP, fill=tk.Y, padx=8, pady=8)
+        self.aquascii_canvas.bind("<Button-1>", self.on_aquascii_click)
+
         if self.cols == 80:
             target_width = 8
             target_height = 16
@@ -229,8 +211,6 @@ class TextScreenTab(ttk.Frame):
         images_selector = self.load_aquascii_bin("assets/aquascii.bin", 16, 16)
         self.aquascii_images_selector = images_selector
         self.aquascii_canvas_images = []
-        aquascii_cell_width = 16
-        aquascii_cell_height = 16
         for idx in range(32*8):
             row = idx // 8
             col = idx % 8
@@ -250,23 +230,76 @@ class TextScreenTab(ttk.Frame):
         self.screen_canvas.bind("<B1-Motion>", self.on_screen_drag)
         self.screen_canvas.bind("<Button-3>", self.on_screen_right_click)
         self.update_screen_grid()
+        self.char_preview_canvas = tk.Canvas(self.char_preview_frame, width=64, height=64, bg="#E0E0E0", highlightthickness=0)
+        self.char_preview_canvas.pack(expand=True, fill=tk.BOTH)
+
+    def update_char_preview(self):
+        # Determine resolution and logical pixel size
+        mode = self.col_mode_var.get()
+        char_code = self.active_char if hasattr(self, 'active_char') else 65
+        fg_idx = getattr(self, 'selected_fg_idx', 0)
+        bg_idx = getattr(self, 'selected_bg_idx', 7)
+        palette = [
+            (0x11, 0x11, 0x11), (0xFF, 0x11, 0x11), (0x11, 0xFF, 0x11), (0xFF, 0xFF, 0x11),
+            (0x22, 0x22, 0xEE), (0xFF, 0x11, 0xFF), (0x33, 0xCC, 0xCC), (0xFF, 0xFF, 0xFF),
+            (0xCC, 0xCC, 0xCC), (0x33, 0xBB, 0xBB), (0xCC, 0x22, 0xCC), (0x44, 0x11, 0x99),
+            (0xFF, 0xFF, 0x77), (0x22, 0xDD, 0x44), (0xBB, 0x22, 0x22), (0x33, 0x33, 0x33)
+        ]
+        fg_color = f'#{palette[fg_idx][0]:02X}{palette[fg_idx][1]:02X}{palette[fg_idx][2]:02X}'
+        bg_color = f'#{palette[bg_idx][0]:02X}{palette[bg_idx][1]:02X}{palette[bg_idx][2]:02X}'
+        if mode == "80":
+            width, height = 32, 64
+            logical_w, logical_h = 4, 8
+        else:
+            width, height = 64, 64
+            logical_w, logical_h = 8, 8
+        self.char_preview_canvas.config(width=width, height=height)
+        # Get bitmap for character
+        if hasattr(self, 'aquascii_images') and self.aquascii_images:
+            # Use binary data if available
+            char_img = self.get_char_bitmap(char_code)
+            img = self.render_char_bitmap(char_img, width, height, logical_w, logical_h, fg_color, bg_color)
+            self.char_preview_imgtk = ImageTk.PhotoImage(img)
+            self.char_preview_canvas.delete("all")
+            self.char_preview_canvas.create_image(width//2, height//2, image=self.char_preview_imgtk, anchor="center")
+
+    def get_char_bitmap(self, char_code):
+        # Returns 8x8 bitmap for character code
+        # Assumes aquascii_images is loaded from BIN as 8x8 blocks
+        # For now, use a placeholder: all foreground
+        # TODO: Replace with actual bitmap extraction if available
+        # If you have a method to get bitmap from aquascii_images, use it here
+        # Placeholder: 8x8 array, all 1s
+        return [[1]*8 for _ in range(8)]
+
+    def render_char_bitmap(self, bitmap, width, height, logical_w, logical_h, fg_color, bg_color):
+        from PIL import Image, ImageDraw
+        img = Image.new("RGB", (width, height), bg_color)
+        draw = ImageDraw.Draw(img)
+        rows = len(bitmap)
+        cols = len(bitmap[0]) if rows > 0 else 0
+        for y in range(rows):
+            for x in range(cols):
+                color = fg_color if bitmap[y][x] else bg_color
+                px = x * logical_w
+                py = y * logical_h
+                draw.rectangle([px, py, px+logical_w-1, py+logical_h-1], fill=color)
+        return img
+
+    # ...existing code...
     def select_fg_swatch(self, idx):
         self.selected_fg_idx = idx
-        for row in self.fg_labels:
-            for lbl in row:
-                lbl.config(highlightbackground="#D0D0D0", highlightcolor="#D0D0D0")
-        fg_row = idx // 4
-        fg_col = idx % 4
-        self.fg_labels[fg_row][fg_col].config(highlightbackground="#FF0000", highlightcolor="#FF0000")
+        for lbl in self.fg_labels:
+            lbl.config(highlightbackground="#D0D0D0", highlightcolor="#D0D0D0")
+        self.fg_labels[idx].config(highlightbackground="#FF0000", highlightcolor="#FF0000")
+        self.update_char_preview()
 
     def select_bg_swatch(self, idx):
         self.selected_bg_idx = idx
-        for row in self.bg_labels:
-            for lbl in row:
-                lbl.config(highlightbackground="#D0D0D0", highlightcolor="#D0D0D0")
-        bg_row = idx // 4
-        bg_col = idx % 4
-        self.bg_labels[bg_row][bg_col].config(highlightbackground="#FF0000", highlightcolor="#FF0000")
+        for lbl in self.bg_labels:
+            lbl.config(highlightbackground="#D0D0D0", highlightcolor="#D0D0D0")
+        self.bg_labels[idx].config(highlightbackground="#FF0000", highlightcolor="#FF0000")
+        self.update_char_preview()
 
     # ...existing code...
 
@@ -295,6 +328,7 @@ class TextScreenTab(ttk.Frame):
         if 0 <= idx < len(self.aquascii_images_selector):
             self.active_char = idx
             self.draw_aquascii_overlay()
+            self.update_char_preview()
 
     def draw_aquascii_overlay(self):
         # Use fixed 16x16 cell size for selector panel
