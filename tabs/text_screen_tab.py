@@ -84,39 +84,9 @@ class TextScreenTab(ttk.Frame):
         self.editor_layout = tk.Frame(self, bg="#D0D0D0")
         self.editor_layout.pack(fill=tk.BOTH, expand=True, padx=10, pady=10)
 
-        self.border_pixels = 48
-        self.cell_width, self.cell_height, self.cols, self.rows, self.border_cols, self.border_rows = self.get_grid_params()
-        self.total_cols = self.cols + 2 * self.border_cols
-        self.total_rows = self.rows + 2 * self.border_rows
-
-        # Screen panel and canvas (must be created before usage)
+        # Screen panel (empty, no canvas or buffer logic)
         self.screen_frame = tk.LabelFrame(self.editor_layout, text="Screen", bg="#D0D0D0", width=736, height=496)
         self.screen_frame.pack(side=tk.RIGHT, fill=tk.Y, padx=(0,8))
-        self.screen_canvas = tk.Canvas(self.screen_frame, width=736, height=496, bg="#E0E0E0", highlightthickness=0)
-        self.screen_canvas.pack(side=tk.TOP, anchor="n", padx=16, pady=16)
-        # Each cell: {"char": int, "fg": int, "bg": int}
-        # Always initialize 80 Col screen to black on white, space char
-        default_fg = 0  # Black
-        default_bg = 7  # White
-        default_char = 32  # Space
-        # Always initialize all cells to black on white, space char
-        self.screen_buffer = []
-        for r in range(self.total_rows):
-            row_cells = []
-            for c in range(self.total_cols):
-                row_cells.append({"char": default_char, "fg": default_fg, "bg": default_bg})
-            self.screen_buffer.append(row_cells)
-        if self.cols == 80:
-            # Always initialize right half to black on white, space char
-            self.right_80_buffer = [
-                [
-                    {"char": 32, "fg": 0, "bg": 7}
-                    for c in range(40)
-                ]
-                for r in range(self.total_rows)
-            ]
-        else:
-            self.right_80_buffer = None
 
         # AQUASCII character selector panel
         self.aquascii_cell_width = 16
@@ -255,141 +225,9 @@ class TextScreenTab(ttk.Frame):
                 self.aquascii_canvas_images.append(img_id)
         self.draw_aquascii_overlay()
 
-        # Ensure screen grid is drawn at startup
-        self.update_screen_grid()
+    # ...Screen panel is now empty, no canvas or event bindings...
 
-        # Restore mouse event bindings for Screen canvas
-        self.screen_canvas.bind("<Button-1>", self.on_screen_click)
-        self.screen_canvas.bind("<B1-Motion>", self.on_screen_drag)
-        self.screen_canvas.bind("<Button-3>", self.on_screen_right_click)
-
-    def get_cell_image(self, char_code, fg_idx, bg_idx, mode):
-        # Cache key: (char, fg, bg, mode)
-        key = (char_code, fg_idx, bg_idx, mode)
-        if not hasattr(self, '_cell_image_cache'):
-            self._cell_image_cache = {}
-        if key in self._cell_image_cache:
-            return self._cell_image_cache[key]
-        # Generate image
-        if mode == "80":
-            width, height = 8, 16
-            logical_w, logical_h = 1, 2
-        else:
-            width, height = 16, 16
-            logical_w, logical_h = 2, 2
-        palette = [
-            (0x11, 0x11, 0x11), (0xFF, 0x11, 0x11), (0x11, 0xFF, 0x11), (0xFF, 0xFF, 0x11),
-            (0x22, 0x22, 0xEE), (0xFF, 0x11, 0xFF), (0x33, 0xCC, 0xCC), (0xFF, 0xFF, 0xFF),
-            (0xCC, 0xCC, 0xCC), (0x33, 0xBB, 0xBB), (0xCC, 0x22, 0xCC), (0x44, 0x11, 0x99),
-            (0xFF, 0xFF, 0x77), (0x22, 0xDD, 0x44), (0xBB, 0x22, 0x22), (0x33, 0x33, 0x33)
-        ]
-        fg_color = f'#{palette[fg_idx][0]:02X}{palette[fg_idx][1]:02X}{palette[fg_idx][2]:02X}'
-        bg_color = f'#{palette[bg_idx][0]:02X}{palette[bg_idx][1]:02X}{palette[bg_idx][2]:02X}'
-        from PIL import Image, ImageDraw, ImageTk
-        bitmap = self.get_char_bitmap(char_code)
-        img = Image.new("RGB", (width, height), bg_color)
-        draw = ImageDraw.Draw(img)
-        rows = len(bitmap)
-        cols = len(bitmap[0]) if rows > 0 else 0
-        for yy in range(rows):
-            for xx in range(cols):
-                color = fg_color if bitmap[yy][xx] else bg_color
-                px = xx * logical_w
-                py = yy * logical_h
-                draw.rectangle([px, py, px+logical_w-1, py+logical_h-1], fill=color)
-        cell_imgtk = ImageTk.PhotoImage(img)
-        self._cell_image_cache[key] = cell_imgtk
-        return cell_imgtk
-
-    def get_cell_image(self, char_code, fg_idx, bg_idx, mode):
-        # Cache key: (char, fg, bg, mode)
-        key = (char_code, fg_idx, bg_idx, mode)
-        if not hasattr(self, '_cell_image_cache'):
-            self._cell_image_cache = {}
-        if key in self._cell_image_cache:
-            return self._cell_image_cache[key]
-        # Generate image
-        if mode == "80":
-            width, height = 8, 16
-            logical_w, logical_h = 1, 2
-        else:
-            width, height = 16, 16
-            logical_w, logical_h = 2, 2
-        palette = [
-            (0x11, 0x11, 0x11), (0xFF, 0x11, 0x11), (0x11, 0xFF, 0x11), (0xFF, 0xFF, 0x11),
-            (0x22, 0x22, 0xEE), (0xFF, 0x11, 0xFF), (0x33, 0xCC, 0xCC), (0xFF, 0xFF, 0xFF),
-            (0xCC, 0xCC, 0xCC), (0x33, 0xBB, 0xBB), (0xCC, 0x22, 0xCC), (0x44, 0x11, 0x99),
-            (0xFF, 0xFF, 0x77), (0x22, 0xDD, 0x44), (0xBB, 0x22, 0x22), (0x33, 0x33, 0x33)
-        ]
-        fg_color = f'#{palette[fg_idx][0]:02X}{palette[fg_idx][1]:02X}{palette[fg_idx][2]:02X}'
-        bg_color = f'#{palette[bg_idx][0]:02X}{palette[bg_idx][1]:02X}{palette[bg_idx][2]:02X}'
-        from PIL import Image, ImageDraw, ImageTk
-        bitmap = self.get_char_bitmap(char_code)
-        img = Image.new("RGB", (width, height), bg_color)
-        draw = ImageDraw.Draw(img)
-        rows = len(bitmap)
-        cols = len(bitmap[0]) if rows > 0 else 0
-        if fg_idx == bg_idx:
-            fg_rgb = tuple(int(fg_color[i:i+2], 16) for i in (1, 3, 5))
-            not_rgb = tuple(255 - c for c in fg_rgb)
-            not_color = '#%02X%02X%02X' % not_rgb
-            for yy in range(rows):
-                for xx in range(cols):
-                    px = xx * logical_w
-                    py = yy * logical_h
-                    if bitmap[yy][xx]:
-                        draw.rectangle([px, py, px+logical_w-1, py+logical_h-1], outline=not_color, width=1)
-                        draw.rectangle([px+1, py+1, px+logical_w-2, py+logical_h-2], fill=fg_color)
-        else:
-            for yy in range(rows):
-                for xx in range(cols):
-                    color = fg_color if bitmap[yy][xx] else bg_color
-                    px = xx * logical_w
-                    py = yy * logical_h
-                    draw.rectangle([px, py, px+logical_w-1, py+logical_h-1], fill=color)
-        cell_imgtk = ImageTk.PhotoImage(img)
-        self._cell_image_cache[key] = cell_imgtk
-        return cell_imgtk
-
-        self.aquascii_canvas = tk.Canvas(aquascii_panel, width=aquascii_canvas_width, height=aquascii_canvas_height, bg="#FFFFFF", highlightthickness=0, bd=0)
-        self.aquascii_canvas.pack(side=tk.TOP, fill=tk.Y, padx=8, pady=8)
-        self.aquascii_canvas.bind("<Button-1>", self.on_aquascii_click)
-
-        if self.cols == 80:
-            target_width = 8
-            target_height = 16
-        else:
-            target_width = 16
-            target_height = 16
-        images = self.load_aquascii_bin("assets/aquascii.bin", target_width, target_height)
-        self.aquascii_images = images
-
-        self.aquascii_images_selector = []
-        images_selector = self.load_aquascii_bin("assets/aquascii.bin", 16, 16)
-        self.aquascii_images_selector = images_selector
-        self.aquascii_canvas_images = []
-        for idx in range(32*8):
-            row = idx // 8
-            col = idx % 8
-            x = col * (aquascii_cell_width + self.char_spacing)
-            y = row * (aquascii_cell_height + self.char_spacing)
-            if idx < len(self.aquascii_images_selector):
-                img_id = self.aquascii_canvas.create_image(x, y, anchor="nw", image=self.aquascii_images_selector[idx])
-                self.aquascii_canvas_images.append(img_id)
-        self.draw_aquascii_overlay()
-
-        if self.cols == 80:
-            images_grid = self.load_aquascii_bin("assets/aquascii.bin", 8, 16)
-        else:
-            images_grid = self.load_aquascii_bin("assets/aquascii.bin", 16, 16)
-        self.aquascii_images_grid = images_grid
-        self.screen_canvas.bind("<Button-1>", self.on_screen_click)
-        self.screen_canvas.bind("<B1-Motion>", self.on_screen_drag)
-        self.screen_canvas.bind("<Button-3>", self.on_screen_right_click)
-        self.update_screen_grid()
-        # Remove duplicate char_preview_canvas creation
-        # Ensure initial preview is shown at startup
-        self.update_char_preview()
+        # ...existing code...
 
     def update_char_preview(self):
         # Determine resolution and logical pixel size
@@ -558,103 +396,13 @@ class TextScreenTab(ttk.Frame):
         ay = (self.active_char // 8) * (aquascii_cell_height + self.char_spacing)
         self.aquascii_canvas.create_rectangle(ax, ay, ax+aquascii_cell_width, ay+aquascii_cell_height, outline="#FF0000", width=2, tags="active_overlay")
 
-    def draw_screen_grid(self):
-        self.screen_canvas.delete("charimg")
-        for row in range(self.total_rows):
-            for col in range(self.total_cols):
-                # For 80 Col mode, use right_80_buffer for right half
-                if self.cols == 80 and self.right_80_buffer is not None and col >= self.border_cols + 40 and col < self.border_cols + 80:
-                    right_col = col - (self.border_cols + 40)
-                    cell = self.right_80_buffer[row][right_col]
-                else:
-                    cell = self.screen_buffer[row][col]
-                char_code = cell["char"]
-                fg_idx = cell["fg"]
-                bg_idx = cell["bg"]
-                mode = self.col_mode_var.get()
-                x = col * self.cell_width
-                y = row * self.cell_height
-                cell_imgtk = self.get_cell_image(char_code, fg_idx, bg_idx, mode)
-                self.screen_canvas.create_image(x, y, anchor="nw", image=cell_imgtk, tags="charimg")
+    # ...Screen grid drawing removed...
 
-    def handle_screen_draw(self, event):
-        col = event.x // self.cell_width
-        row = event.y // self.cell_height
-        active_start_col = self.border_cols
-        active_end_col = self.total_cols - self.border_cols
-        active_start_row = self.border_rows
-        active_end_row = self.total_rows - self.border_rows
+    # ...Screen draw handler removed...
 
-        # Border logic
-        if (row < self.border_rows or row >= self.total_rows - self.border_rows or
-            col < self.border_cols or col >= self.total_cols - self.border_cols):
-            # Update upper-left active cell first
-            self.screen_buffer[self.border_rows][self.border_cols] = {
-                "char": self.active_char,
-                "fg": self.selected_fg_idx,
-                "bg": self.selected_bg_idx
-            }
-            # Copy char, fg, bg from upper-left active cell to border
-            ref_cell = self.screen_buffer[self.border_rows][self.border_cols]
-            for r in range(self.total_rows):
-                for c in range(self.total_cols):
-                    if (r < self.border_rows or r >= self.total_rows - self.border_rows or
-                        c < self.border_cols or c >= self.total_cols - self.border_cols):
-                        self.screen_buffer[r][c] = dict(ref_cell)
-            self.update_screen_grid()
-            return
+    # ...Screen click handler removed...
 
-        # First cell of active area
-        if row == active_start_row and col == active_start_col:
-            ref_cell = self.screen_buffer[self.border_rows][self.border_cols]
-            for r in range(self.total_rows):
-                for c in range(self.total_cols):
-                    if (r < self.border_rows or r >= self.total_rows - self.border_rows or
-                        c < self.border_cols or c >= self.total_cols - self.border_cols):
-                        self.screen_buffer[r][c] = dict(ref_cell)
-            self.screen_buffer[self.border_rows][self.border_cols] = {
-                "char": self.active_char,
-                "fg": self.selected_fg_idx,
-                "bg": self.selected_bg_idx
-            }
-            self.update_screen_grid()
-            return
-
-        # Other active area cell
-        if (active_start_col <= col < active_end_col and active_start_row <= row < active_end_row):
-            self.screen_buffer[row][col] = {
-                "char": self.active_char,
-                "fg": self.selected_fg_idx,
-                "bg": self.selected_bg_idx
-            }
-            self.update_screen_grid()
-
-    def on_screen_click(self, event):
-        col = event.x // self.cell_width
-        row = event.y // self.cell_height
-        self._prev_draw_cell = (col, row)
-        self.handle_screen_draw(event)
-
-    def on_screen_drag(self, event):
-        col = event.x // self.cell_width
-        row = event.y // self.cell_height
-        prev = getattr(self, '_prev_draw_cell', None)
-        curr = (col, row)
-        if prev is not None and prev != curr:
-            for y, x in self._interpolate_cells(prev, curr):
-                # Only draw in active area
-                active_start_col = self.border_cols
-                active_end_col = self.total_cols - self.border_cols
-                active_start_row = self.border_rows
-                active_end_row = self.total_rows - self.border_rows
-                if (active_start_col <= x < active_end_col and active_start_row <= y < active_end_row):
-                    self.screen_buffer[y][x] = {
-                        "char": self.active_char,
-                        "fg": self.selected_fg_idx,
-                        "bg": self.selected_bg_idx
-                    }
-            self.update_screen_grid()
-        self._prev_draw_cell = curr
+    # ...Screen drag handler removed...
 
 
     def get_grid_params(self):
@@ -677,100 +425,10 @@ class TextScreenTab(ttk.Frame):
         border_rows = 3  # Always 3 rows for top/bottom border
         return cell_width, cell_height, cols, rows, border_cols, border_rows
 
-    def update_screen_grid(self):
-        self.screen_canvas.delete("gridline")
-        self.draw_screen_grid()  # Always draw characters first
-        if self.show_grid_var.get():
-            # Only grid the active area, not the border
-            start_col = self.border_cols
-            end_col = self.total_cols - self.border_cols
-            start_row = self.border_rows
-            end_row = self.total_rows - self.border_rows
-            # Draw vertical grid lines for active area
-            for col in range(start_col, end_col + 1):
-                x = col * self.cell_width
-                self.screen_canvas.create_line(x, start_row * self.cell_height, x, end_row * self.cell_height, fill="#A0A0A0", tags="gridline")
-            # Draw horizontal grid lines for active area
-            for row in range(start_row, end_row + 1):
-                y = row * self.cell_height
-                self.screen_canvas.create_line(start_col * self.cell_width, y, end_col * self.cell_width, y, fill="#A0A0A0", tags="gridline")
+    # ...Screen grid update removed...
 
     def on_col_mode_change(self, *args):
-        prev_cols = self.cols
-        prev_rows = self.rows
-        prev_total_cols = self.total_cols
-        prev_total_rows = self.total_rows
-        prev_buffer = self.screen_buffer
-        prev_mode = "80" if self.cell_width == 8 else "40"
-        # Update grid parameters and buffer for new mode
-        self.cell_width, self.cell_height, self.cols, self.rows, self.border_cols, self.border_rows = self.get_grid_params()
-        self.total_cols = self.cols + 2 * self.border_cols
-        self.total_rows = self.rows + 2 * self.border_rows
-        canvas_width = self.border_pixels * 2 + self.cols * self.cell_width
-        canvas_height = self.border_pixels * 2 + self.rows * self.cell_height
-        self.screen_canvas.config(width=canvas_width, height=canvas_height)
-        # Recreate screen buffer for new grid size
-        new_buffer = [[{"char": 32, "fg": self.selected_fg_idx, "bg": self.selected_bg_idx} for _ in range(self.total_cols)] for _ in range(self.total_rows)]
-        # Preserve right half of 80-column screen
-        if prev_cols == 80:
-            # Save right half of 80 Col screen before switching to 40 Col
-            self.right_80_buffer = [
-                [dict(prev_buffer[r][self.border_cols+40+c]) for c in range(40)]
-                for r in range(self.total_rows)
-            ]
-        # Map previous buffer to new buffer, always convert legacy int cells to dicts
-        def cell_to_dict(cell):
-            if isinstance(cell, dict):
-                return dict(cell)
-            else:
-                return {"char": cell, "fg": self.selected_fg_idx, "bg": self.selected_bg_idx}
-
-        if self.cols == 80 and prev_cols == 40:
-            # 40→80: Copy left 40 columns, restore right 40 if available
-            for r in range(min(self.total_rows, prev_total_rows)):
-                for c in range(40):
-                    new_buffer[r][c+self.border_cols] = cell_to_dict(prev_buffer[r][c+3])
-            # Restore right half from buffer if available, else set to FG=0, BG=7, char=32
-            for r in range(self.total_rows):
-                for c in range(40):
-                    if self.right_80_buffer and r < len(self.right_80_buffer):
-                        new_buffer[r][c+self.border_cols+40] = dict(self.right_80_buffer[r][c])
-                    else:
-                        new_buffer[r][c+self.border_cols+40] = {"char": 32, "fg": 0, "bg": 7}
-        elif self.cols == 40 and prev_cols == 80:
-            # 80→40: Copy left 40 columns, preserve right half
-            for r in range(min(self.total_rows, prev_total_rows)):
-                for c in range(40):
-                    new_buffer[r][c+3] = cell_to_dict(prev_buffer[r][c+6])
-            # Save right half (already handled above)
-        else:
-            # Same mode, just copy
-            for r in range(min(self.total_rows, prev_total_rows)):
-                for c in range(min(self.total_cols, prev_total_cols)):
-                    new_buffer[r][c] = cell_to_dict(prev_buffer[r][c])
-        # Set border cells to match active area (0,0)
-        border_cell = new_buffer[self.border_rows][self.border_cols]
-        for r in range(self.total_rows):
-            for c in range(self.total_cols):
-                if (r < self.border_rows or r >= self.total_rows - self.border_rows or
-                    c < self.border_cols or c >= self.total_cols - self.border_cols):
-                    new_buffer[r][c] = dict(border_cell)
-        self.screen_buffer = new_buffer
-        # Reload AQUASCII images for grid with correct pixel scaling
-        if self.cols == 80:
-            self.aquascii_images_grid = self.load_aquascii_bin("assets/aquascii.bin", 8, 16)
-        else:
-            self.aquascii_images_grid = self.load_aquascii_bin("assets/aquascii.bin", 16, 16)
-        # Redraw everything
-        # Update character preview immediately
+        # Only update Paint char preview width, no legacy update calls to Screen panel
         self.update_char_preview()
-        self.update_screen_grid()
-    # Redraw everything
-    # Update character preview immediately
 
-    def on_tab_active(self):
-        # Only initialize the buffer the first time the tab is activated
-        if not self._screen_buffer_initialized:
-            self._init_screen_buffer()
-            self._screen_buffer_initialized = True
-        self.update_screen_grid()
+    # ...Screen tab activation logic removed...
