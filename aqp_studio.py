@@ -102,16 +102,10 @@ class AQPStudio:
         notebook = ttk.Notebook(self.root)
         notebook.pack(fill=tk.BOTH, expand=True, padx=4, pady=4)
 
-        # BMP4 tab
+        # AQ+ Images tab
         bmp4_frame = tk.Frame(notebook, bg="#D0D0D0")
         notebook.add(bmp4_frame, text="AQ+ Images")
 
-        # Text Screens tab (now using TextScreenTab class)
-        from tabs.text_screen_tab import TextScreenTab
-        text_screen_tab = TextScreenTab(notebook)
-        notebook.add(text_screen_tab, text="Text Screens")
-
-        # All previous widget creation now goes inside bmp4_frame
         preview_frame = tk.Frame(bmp4_frame, bg="#D0D0D0")
         preview_frame.pack(pady=10, padx=20)
 
@@ -133,7 +127,7 @@ class AQPStudio:
             command=self.import_image
         )
         self.import_btn.pack()
-        tk.Label(import_btn_frame, bg="#D0D0D0", text="Import Image", font=("Arial", 10)).pack(pady=(2,0))
+        tk.Label(import_btn_frame, bg="#D0D0D0", text="Load Image", font=("Arial", 10)).pack(pady=(2,0))
 
         self.orig_img_box = tk.LabelFrame(preview_frame, bg="#D0D0D0", text=" Original Image ", width=preview_img_width+20, height=preview_img_height+36)
         self.orig_img_box.pack_propagate(False)
@@ -163,8 +157,8 @@ class AQPStudio:
             command=self.export_image
         )
         self.export_btn.pack()
-        tk.Label(export_btn_frame, text="Export Image", bg="#D0D0D0", font=("Arial", 10)).pack(pady=(2,0))
-        export_format_frame = tk.LabelFrame(export_btn_frame, bg="#D0D0D0", text="Export Format")
+        tk.Label(export_btn_frame, text="Save Image", bg="#D0D0D0", font=("Arial", 10)).pack(pady=(2,0))
+        export_format_frame = tk.LabelFrame(export_btn_frame, bg="#D0D0D0", text="File Format")
         export_format_frame.pack(pady=(8,0))
         for fmt in ["BMP4", "BMP1", "PNG"]:
             tk.Radiobutton(export_format_frame, bg="#D0D0D0", text=fmt, variable=self.export_format_var, value=fmt, command=self.update_preview).pack(side=tk.LEFT)
@@ -174,20 +168,21 @@ class AQPStudio:
         palette_section_frame.grid_columnconfigure(0, weight=1)
         palette_section_frame.grid_columnconfigure(1, weight=1)
 
-        self.image_controls_frame = tk.LabelFrame(palette_section_frame, bg="#D0D0D0", padx="12", pady="4", text="Image Controls")
+        self.image_controls_frame = tk.LabelFrame(palette_section_frame, bg="#D0D0D0", padx="12", pady="4", text="Controls")
         self.image_controls_frame.grid(row=0, column=0, padx=(20,10), sticky="nsew")
-        scaling_frame = tk.LabelFrame(self.image_controls_frame, bg="#D0D0D0", padx="6", borderwidth="0", text="Scaling")
+        scaling_frame = tk.LabelFrame(self.image_controls_frame, bg="#D0D0D0", padx="6", borderwidth="0", text="Output Scaling")
         scaling_frame.pack(fill=tk.X, pady=(4,2))
+        self.scaling_var.set("stretch")  # Set stretch as default selection
         for mode in ["letterbox", "stretch", "fill"]:
             tk.Radiobutton(scaling_frame, bg="#D0D0D0", text=mode.title(), variable=self.scaling_var, value=mode, command=self.update_preview).pack(side=tk.LEFT)
-        sampling_frame = tk.LabelFrame(self.image_controls_frame, bg="#D0D0D0", padx="6", borderwidth="0", text="Sampling")
+        sampling_frame = tk.LabelFrame(self.image_controls_frame, bg="#D0D0D0", padx="6", borderwidth="0", text="Output Sampling")
         sampling_frame.pack(fill=tk.X, pady=(2,4))
         sampling_methods = ["bicubic", "bilinear", "lanczos", "nearest"]
         self.sampling_var.set("bicubic")  # Set Bicubic as default selection
         for method in sampling_methods:
             tk.Radiobutton(sampling_frame, bg="#D0D0D0", text=method.title(), variable=self.sampling_var, value=method, command=self.update_preview).pack(side=tk.LEFT)
         self.dither_var = tk.StringVar(value="floyd")
-        dither_frame = tk.LabelFrame(self.image_controls_frame, bg="#D0D0D0", padx="6", borderwidth="0", text="Dithering")
+        dither_frame = tk.LabelFrame(self.image_controls_frame, bg="#D0D0D0", padx="6", borderwidth="0", text="Output Dithering")
         dither_frame.pack(fill=tk.X, pady=(2,4))
         for dither, label in [("floyd", "Floyd-Steinberg"), ("none", "None")]:
             tk.Radiobutton(dither_frame, bg="#D0D0D0", text=label, variable=self.dither_var, value=dither, command=self.update_preview).pack(side=tk.LEFT)
@@ -200,7 +195,7 @@ class AQPStudio:
         tk.Button(btn_frame, bg="#D0D0D0", text="Save Palette...", command=self.save_palette).pack(side=tk.LEFT, padx=5)
         tk.Checkbutton(palette_frame, padx="54", bg="#D0D0D0", text="Use imported palette", variable=self.force_palette_var, command=self.update_preview).pack(anchor="w")
 
-        self.palette_preview_frame = tk.LabelFrame(palette_section_frame, bg="#D0D0D0", text="Current Palette Preview")
+        self.palette_preview_frame = tk.LabelFrame(palette_section_frame, bg="#D0D0D0", text="Output Palette")
         self.palette_preview_frame.grid(row=0, column=2, padx=(10, 30), sticky="nsew")  # Add more right padding
         self.palette_preview_frame.config(width=160)  # Make preview area a bit narrower
         swatch_height = 1  # Smaller swatch height
